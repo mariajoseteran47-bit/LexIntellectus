@@ -1,0 +1,41 @@
+/app/app/services/rag_engine.py:8: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+🧠 Iniciando verificación lógica del LAA Engine...
+2026-02-15 20:58:17,845 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2026-02-15 20:58:17,850 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-15 20:58:17,860 INFO sqlalchemy.engine.Engine select current_schema()
+2026-02-15 20:58:17,863 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-15 20:58:17,867 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2026-02-15 20:58:17,869 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-15 20:58:17,878 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-02-15 20:58:18,062 INFO sqlalchemy.engine.Engine SELECT laa_sessions.id, laa_sessions.tenant_id, laa_sessions.usuario_id, laa_sessions.expediente_id, laa_sessions.modo, laa_sessions.titulo, laa_sessions.contexto_documentos_ids, laa_sessions.tokens_consumidos, laa_sessions.costo_estimado_usd, laa_sessions.status, laa_sessions.created_at, laa_sessions.updated_at 
+FROM laa_sessions 
+ LIMIT $1::INTEGER
+2026-02-15 20:58:18,063 INFO sqlalchemy.engine.Engine [generated in 0.00192s] (1,)
+🔍 Buscando contexto legal para: ¿Qué dice el Código Civil sobre el cumplimiento de los contratos?
+DEBUG: Embedding dim = 3072
+2026-02-15 20:58:18,764 INFO sqlalchemy.engine.Engine SELECT legal_chunks.id, legal_chunks.source_type, legal_chunks.source_id, legal_chunks.articulo_id, legal_chunks.chunk_index, legal_chunks.contenido_texto, legal_chunks.contenido_markdown, legal_chunks.vector_embedding, legal_chunks.metadata_json, legal_chunks.tokens_count, legal_chunks.hash_contenido, legal_chunks.created_at, legal_chunks.updated_at 
+FROM legal_chunks ORDER BY legal_chunks.vector_embedding <-> $1 
+ LIMIT $2::INTEGER
+2026-02-15 20:58:18,765 INFO sqlalchemy.engine.Engine [generated in 0.00307s] ('[-0.012433371,0.014723664,0.017336108,-0.06510354,0.008171728,0.0026760735,0.0064011267,0.0031979373,0.010393236,-0.026645,-0.008849198,0.0066264407, ... (39100 characters truncated) ... 017308818,-0.02501525,0.008913743,0.009009215,0.0024893605,0.007360775,0.011788975,-0.0014993163,-0.0036486872,0.0046729557,-0.00863569,0.0042685526]', 5)
+✅ Se encontraron 2 fragmentos relevantes:
+   - [ley] Art. 1836.- El contrato es ley entre las partes y debe cumpl...
+   - [ley] Art. 2010.- La mora del deudor da derecho al acreedor a soli...
+
+🤖 Procesando generación con Gemini para sesión 606edcd6-4b1d-47e0-92f9-3b8d5963c4f5...
+DEBUG: Embedding dim = 3072
+2026-02-15 20:58:19,041 INFO sqlalchemy.engine.Engine SELECT legal_chunks.id, legal_chunks.source_type, legal_chunks.source_id, legal_chunks.articulo_id, legal_chunks.chunk_index, legal_chunks.contenido_texto, legal_chunks.contenido_markdown, legal_chunks.vector_embedding, legal_chunks.metadata_json, legal_chunks.tokens_count, legal_chunks.hash_contenido, legal_chunks.created_at, legal_chunks.updated_at 
+FROM legal_chunks ORDER BY legal_chunks.vector_embedding <-> $1 
+ LIMIT $2::INTEGER
+2026-02-15 20:58:19,042 INFO sqlalchemy.engine.Engine [cached since 0.2801s ago] ('[-0.012433371,0.014723664,0.017336108,-0.06510354,0.008171728,0.0026760735,0.0064011267,0.0031979373,0.010393236,-0.026645,-0.008849198,0.0066264407, ... (39100 characters truncated) ... 017308818,-0.02501525,0.008913743,0.009009215,0.0024893605,0.007360775,0.011788975,-0.0014993163,-0.0036486872,0.0046729557,-0.00863569,0.0042685526]', 5)
+
+⚠️ Error en generación LLM: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+💡 La arquitectura RAG ha sido validada en su fase de RECUPERACIÓN (DB -> Vector -> Contexto).
+2026-02-15 20:58:19,147 INFO sqlalchemy.engine.Engine ROLLBACK
