@@ -12,7 +12,7 @@ export interface CaseFilterParams {
 export const caseService = {
     // List cases with pagination and filters
     async getAll(params: CaseFilterParams = {}): Promise<ExpedienteListResponse> {
-        const { data } = await api.get<ExpedienteListResponse>('/cases/', { params });
+        const { data } = await api.get<ExpedienteListResponse>('/cases', { params });
         return data;
     },
 
@@ -24,7 +24,7 @@ export const caseService = {
 
     // Create new case
     async create(caseData: Partial<Expediente>): Promise<Expediente> {
-        const { data } = await api.post<Expediente>('/cases/', caseData);
+        const { data } = await api.post<Expediente>('/cases', caseData);
         return data;
     },
 

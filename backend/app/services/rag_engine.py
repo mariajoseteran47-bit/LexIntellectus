@@ -17,7 +17,7 @@ class RAGEngine:
         self.api_key = settings.GOOGLE_API_KEY if hasattr(settings, 'GOOGLE_API_KEY') else os.getenv("GOOGLE_API_KEY")
         genai.configure(api_key=self.api_key)
         self.embedding_model = "models/gemini-embedding-001"
-        self.chat_model = "models/gemini-1.5-flash"
+        self.chat_model = "models/gemini-2.5-flash"
 
     async def get_embedding(self, text: str) -> List[float]:
         try:

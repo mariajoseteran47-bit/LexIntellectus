@@ -24,12 +24,20 @@ export interface CreateDeadlineDto {
     hora_vencimiento?: string;
     dias_tipo?: string;
     prioridad?: string;
+    base_legal?: string;
 }
 
 export const deadlineService = {
     async getByCaseId(caseId: string): Promise<Deadline[]> {
-        const { data } = await api.get<{ items: Deadline[] }>('/deadlines/', {
+        const { data } = await api.get<{ items: Deadline[] }>('/deadlines', {
             params: { expediente_id: caseId, size: 100 }
+        });
+        return data.items;
+    },
+
+    async getAll(params: any = {}): Promise<Deadline[]> {
+        const { data } = await api.get<{ items: Deadline[] }>('/deadlines', {
+            params: { ...params, size: 100 }
         });
         return data.items;
     },

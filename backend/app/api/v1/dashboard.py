@@ -8,7 +8,7 @@ from app.core.dependencies import get_current_user
 from app.models.user import Usuario
 from app.models.case import Expediente, PlazoFatal
 
-router = APIRouter()
+router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/stats")
 async def get_dashboard_stats(

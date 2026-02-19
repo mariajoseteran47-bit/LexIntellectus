@@ -49,7 +49,7 @@ async def rebuild_core_tables():
             apellido="LexIntellectus",
             tipo_usuario="admin_despacho",
             status="activo",
-            last_login=datetime.now(timezone.utc)
+            last_login=datetime.now()
         )
         db.add(admin)
         await db.commit()

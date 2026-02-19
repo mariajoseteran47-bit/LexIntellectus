@@ -66,24 +66,24 @@ export default function DashboardLayout({
                         </svg>
                         Expedientes
                     </Link>
-                    <a href="#" className="sidebar-link">
+                    <Link href="/dashboard/agenda" className={pathname?.startsWith('/dashboard/agenda') ? 'sidebar-link-active' : 'sidebar-link'}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         Agenda
-                    </a>
-                    <a href="#" className="sidebar-link">
+                    </Link>
+                    <Link href="/dashboard/documents" className={pathname?.startsWith('/dashboard/documents') ? 'sidebar-link-active' : 'sidebar-link'}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         Documentos
-                    </a>
-                    <a href="#" className="sidebar-link">
+                    </Link>
+                    <Link href="/dashboard/clients" className={pathname?.startsWith('/dashboard/clients') ? 'sidebar-link-active' : 'sidebar-link'}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-3-3h-1m-7 5h6m-6 0H7a3 3 0 01-3-3V8a3 3 0 013-3h3m0 0l3-3m0 0l3 3m-3-3v12" />
                         </svg>
                         Clientes
-                    </a>
+                    </Link>
                     <Link href="/dashboard/knowledge" className={pathname === '/dashboard/knowledge' ? 'sidebar-link-active' : 'sidebar-link'}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -94,7 +94,7 @@ export default function DashboardLayout({
                     <div className="pt-4 mt-4 border-t border-surface-200">
                         <span className="px-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Herramientas</span>
                     </div>
-                    <a href="#" className="sidebar-link mt-2">
+                    <Link href="/dashboard/ai" className={`mt-2 ${pathname?.startsWith('/dashboard/ai') ? 'sidebar-link-active' : 'sidebar-link'}`}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 14.5M14.25 3.104c.251.023.501.05.75.082M19.8 14.5l-1.1 1.1a2.25 2.25 0 01-1.591.659H6.891a2.25 2.25 0 01-1.591-.659L4.2 14.5m15.6 0l.9.9m-16.5-.9l-.9.9" />
                         </svg>
@@ -102,13 +102,13 @@ export default function DashboardLayout({
                             Asistente IA
                             <span className="badge bg-accent-400/15 text-accent-500 text-[10px]">LAA</span>
                         </span>
-                    </a>
-                    <a href="#" className="sidebar-link">
+                    </Link>
+                    <Link href="/dashboard/settings" className={pathname?.startsWith('/dashboard/settings') ? 'sidebar-link-active' : 'sidebar-link'}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
                         Configuración
-                    </a>
+                    </Link>
                 </nav>
 
                 {/* User footer */}
@@ -137,7 +137,14 @@ export default function DashboardLayout({
                     <div>
                         <h2 className="text-lg font-semibold text-surface-800">
                             {pathname === '/dashboard' ? 'Dashboard' :
-                                pathname?.startsWith('/dashboard/cases') ? 'Expedientes' : 'LexIntellectus'}
+                                pathname?.startsWith('/dashboard/cases') ? 'Expedientes' :
+                                    pathname?.startsWith('/dashboard/agenda') ? 'Agenda' :
+                                        pathname?.startsWith('/dashboard/documents') ? 'Documentos' :
+                                            pathname?.startsWith('/dashboard/clients') ? 'Clientes' :
+                                                pathname?.startsWith('/dashboard/knowledge') ? 'Indexación Legal' :
+                                                    pathname?.startsWith('/dashboard/ai') ? 'Asistente IA' :
+                                                        pathname?.startsWith('/dashboard/settings') ? 'Configuración' :
+                                                            pathname?.startsWith('/dashboard/users') ? 'Usuarios' : 'LexIntellectus'}
                         </h2>
                     </div>
                     <div className="flex items-center gap-4">

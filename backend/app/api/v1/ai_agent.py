@@ -10,7 +10,7 @@ from app.models.ai import LAASession, LegalChunk, LAAMessage
 from app.services.rag_engine import RAGEngine
 from app.services.ingestion import IngestionPipeline
 
-router = APIRouter()
+router = APIRouter(prefix="/ai", tags=["AI"])
 
 @router.post("/chat")
 async def chat_interaction(

@@ -1,82 +1,86 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Plus, Trash2, User } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import { caseService } from '@/services/caseService';
-import { Expediente, ParteProcesal } from '@/types/case';
+import { Expediente } from '@/types/case';
 
-export default function NewCasePage() {
+export default function EditCasePage() {
     const router = useRouter();
-    const [loading, setLoading] = useState(false);
+    const params = useParams();
+    const id = params.id as string;
 
-    // Form State
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState<Partial<Expediente>>({
         ramo: 'civil',
         prioridad: 'normal',
         moneda: 'NIO',
-        fecha_apertura: new Date().toISOString().split('T')[0],
     });
 
-    // Parties State
-    const [partes, setPartes] = useState<Partial<ParteProcesal>[]>([
-        { rol_procesal: 'demandante', tipo_persona: 'natural', nombre_completo: '' },
-        { rol_procesal: 'demandado', tipo_persona: 'natural', nombre_completo: '' }
-    ]);
+    useEffect(() => {
+        if (id) {
+            loadCase();
+        }
+    }, [id]);
+
+    const loadCase = async () => {
+        try {
+            const data = await caseService.getById(id);
+            // Format date for input type="date"
+            if (data.fecha_apertura) {
+                data.fecha_apertura = new Date(data.fecha_apertura).toISOString().split('T')[0];
+            }
+            setFormData(data);
+        } catch (error) {
+            console.error('Failed to load case', error);
+            alert('Error al cargar el expediente');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handlePartyChange = (index: number, field: keyof ParteProcesal, value: string) => {
-        const newPartes = [...partes];
-        newPartes[index] = { ...newPartes[index], [field]: value };
-        setPartes(newPartes);
-    };
-
-    const addParty = () => {
-        setPartes([...partes, { rol_procesal: 'tercero_interesado', tipo_persona: 'natural', nombre_completo: '' }]);
-    };
-
-    const removeParty = (index: number) => {
-        const newPartes = partes.filter((_, i) => i !== index);
-        setPartes(newPartes);
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
+        setSaving(true);
         try {
-            // Clean up parties
-            const validPartes = partes.filter(p => p.nombre_completo && p.nombre_completo.trim() !== '');
+            // Remove parties from payload as the current update endpoint doesn't handle them
+            const { partes, created_at, updated_at, id: caseId, ...payload } = formData as any;
 
-            const payload = {
-                ...formData,
-                partes: validPartes
-            };
-
-            const createdCase = await caseService.create(payload as any);
-            router.push(`/dashboard/cases/${createdCase.id}`);
+            await caseService.update(id, payload);
+            router.push(`/dashboard/cases/${id}`);
         } catch (error) {
-            console.error('Failed to create case', error);
-            alert('Error al crear el expediente. Verifica los datos.');
+            console.error('Failed to update case', error);
+            alert('Error al actualizar el expediente.');
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
+
+    if (loading) {
+        return <div className="p-8 text-center text-surface-500">Cargando expediente...</div>;
+    }
 
     return (
         <div className="max-w-4xl mx-auto pb-12">
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
-                <Link href="/dashboard/cases" className="btn btn-ghost p-2 text-surface-500 hover:text-primary-600">
+                <button
+                    onClick={() => router.back()}
+                    className="btn btn-ghost p-2 text-surface-500 hover:text-primary-600"
+                >
                     <ArrowLeft className="w-5 h-5" />
-                </Link>
+                </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-surface-900">Nuevo Expediente</h1>
-                    <p className="text-surface-500 text-sm">Registra un nuevo caso judicial</p>
+                    <h1 className="text-2xl font-bold text-surface-900">Editar Expediente</h1>
+                    <p className="text-surface-500 text-sm">Actualiza la información del caso {formData.numero_interno}</p>
                 </div>
             </div>
 
@@ -152,71 +156,6 @@ export default function NewCasePage() {
                     </div>
                 </div>
 
-                {/* Section 2: Parties */}
-                <div className="card p-6">
-                    <div className="flex items-center justify-between mb-4 border-b border-surface-200 pb-2">
-                        <h2 className="text-lg font-semibold text-surface-800">Partes Procesales</h2>
-                        <button type="button" onClick={addParty} className="btn btn-sm btn-ghost text-primary-600">
-                            <Plus className="w-4 h-4 mr-1" /> Agregar Parte
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {partes.map((parte, index) => (
-                            <div key={index} className="flex flex-col md:flex-row gap-4 p-4 bg-surface-50 rounded-lg border border-surface-200 relative group">
-                                <div className="flex-1">
-                                    <label className="text-xs font-medium text-surface-500 mb-1 block">Rol Procesal</label>
-                                    <select
-                                        className="input w-full h-9 text-sm"
-                                        value={parte.rol_procesal}
-                                        onChange={(e) => handlePartyChange(index, 'rol_procesal', e.target.value)}
-                                    >
-                                        <option value="demandante">Demandante / Actor</option>
-                                        <option value="demandado">Demandado</option>
-                                        <option value="tercero_interesado">Tercero Interesado</option>
-                                        <option value="ministerio_publico">Ministerio Público</option>
-                                        <option value="testigo">Testigo</option>
-                                    </select>
-                                </div>
-                                <div className="flex-[2]">
-                                    <label className="text-xs font-medium text-surface-500 mb-1 block">Nombre Completo</label>
-                                    <div className="relative">
-                                        <User className="w-4 h-4 text-surface-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                        <input
-                                            type="text"
-                                            placeholder="Nombre de la persona o entidad"
-                                            className="input w-full h-9 pl-9 text-sm"
-                                            value={parte.nombre_completo || ''}
-                                            onChange={(e) => handlePartyChange(index, 'nombre_completo', e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="w-32">
-                                    <label className="text-xs font-medium text-surface-500 mb-1 block">Tipo</label>
-                                    <select
-                                        className="input w-full h-9 text-sm"
-                                        value={parte.tipo_persona}
-                                        onChange={(e) => handlePartyChange(index, 'tipo_persona', e.target.value as 'natural' | 'juridica')}
-                                    >
-                                        <option value="natural">Natural</option>
-                                        <option value="juridica">Jurídica</option>
-                                    </select>
-                                </div>
-                                {partes.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => removeParty(index)}
-                                        className="absolute top-2 right-2 p-1 text-surface-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Eliminar"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Section 3: Extra Info */}
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-surface-800 mb-4 border-b border-surface-200 pb-2">
@@ -284,10 +223,10 @@ export default function NewCasePage() {
                 </div>
 
                 <div className="flex justify-end gap-4">
-                    <Link href="/dashboard/cases" className="btn btn-ghost">Cancelar</Link>
-                    <button type="submit" className="btn btn-primary flex items-center gap-2" disabled={loading}>
+                    <button type="button" onClick={() => router.back()} className="btn btn-ghost">Cancelar</button>
+                    <button type="submit" className="btn btn-primary flex items-center gap-2" disabled={saving}>
                         <Save className="w-4 h-4" />
-                        {loading ? 'Guardando...' : 'Guardar Expediente'}
+                        {saving ? 'Guardando...' : 'Actualizar Expediente'}
                     </button>
                 </div>
             </form>

@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan — runs on startup and shutdown."""
     # Startup: create tables if they don't exist (dev only)
     if settings.APP_ENV == "development":
-        await init_db()
+        # await init_db()  # Redundant if using rebuild scripts, can cause issues with existing types
         print(f"🏛️  {settings.APP_NAME} v{settings.APP_VERSION} starting...")
         print(f"📊 Database: {settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
         print(f"🔄 Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
@@ -31,14 +31,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description=(
-        "ERP SaaS para el sector legal nicaragüense. "
-        "Gestión procesal, notarial, financiera y asistente legal con IA."
-    ),
     version=settings.APP_VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
     lifespan=lifespan,
 )
 
@@ -60,13 +53,13 @@ api_prefix = settings.API_V1_PREFIX
 
 app.include_router(auth.router, prefix=api_prefix)
 app.include_router(users.router, prefix=api_prefix)
-app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["Tenants"])
-app.include_router(cases.router, prefix="/api/v1/cases", tags=["Cases"])
-app.include_router(deadlines.router, prefix="/api/v1/deadlines", tags=["Deadlines"])
-app.include_router(documents.router, prefix="/api/v1/documents", tags=["Documents"])
-app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])
-app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
-app.include_router(ai_agent.router, prefix="/api/v1/ai", tags=["Legal AI Agent"])
+app.include_router(tenants.router, prefix=api_prefix, tags=["Tenants"])
+app.include_router(cases.router, prefix=api_prefix, tags=["Cases"])
+app.include_router(deadlines.router, prefix=api_prefix, tags=["Deadlines"])
+app.include_router(documents.router, prefix=api_prefix, tags=["Documents"])
+app.include_router(notifications.router, prefix=api_prefix, tags=["Notifications"])
+app.include_router(dashboard.router, prefix=api_prefix, tags=["Dashboard"])
+app.include_router(ai_agent.router, prefix=api_prefix, tags=["Legal AI Agent"])
 app.include_router(health.router, prefix=api_prefix)
 
 @app.get("/")

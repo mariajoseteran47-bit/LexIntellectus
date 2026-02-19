@@ -9,7 +9,7 @@ from app.models.case import PlazoFatal, Expediente
 from app.models.user import Usuario
 from app.services.email import email_service
 
-router = APIRouter()
+router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 @router.post("/check-deadlines")
 async def check_deadlines(

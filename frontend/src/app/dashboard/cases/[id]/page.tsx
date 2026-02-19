@@ -14,6 +14,9 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     const [caseData, setCaseData] = useState<Expediente | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
+    const [showActionMenu, setShowActionMenu] = useState(false);
+
+    const router = useRouter();
 
     useEffect(() => {
         if (params.id) {
@@ -31,6 +34,17 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleEdit = () => {
+        router.push(`/dashboard/cases/${params.id}/edit`);
+    };
+
+    const handleActionClick = (tab: string) => {
+        setActiveTab(tab);
+        setShowActionMenu(false);
+
+        // Optionally: Scroll to content or trigger specific modal via window event or ref
     };
 
     if (loading) {
@@ -67,13 +81,51 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        <button className="btn btn-outline flex items-center gap-2">
+                    <div className="flex gap-2 relative">
+                        <button
+                            onClick={handleEdit}
+                            className="btn btn-outline flex items-center gap-2"
+                        >
                             <Edit2 className="w-4 h-4" /> Editar
                         </button>
-                        <button className="btn btn-primary flex items-center gap-2">
-                            <Plus className="w-4 h-4" /> Nueva Actuación
-                        </button>
+
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowActionMenu(!showActionMenu)}
+                                className="btn btn-primary flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" /> Nueva Actuación
+                            </button>
+
+                            {showActionMenu && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-10"
+                                        onClick={() => setShowActionMenu(false)}
+                                    ></div>
+                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-surface-200 z-20 py-1 overflow-hidden animate-slide-up">
+                                        <button
+                                            onClick={() => handleActionClick('partes')}
+                                            className="w-full text-left px-4 py-2 text-sm text-surface-700 hover:bg-surface-50 flex items-center gap-2"
+                                        >
+                                            <Users className="w-4 h-4 text-surface-400" /> Agregar Parte Procesal
+                                        </button>
+                                        <button
+                                            onClick={() => handleActionClick('plazos')}
+                                            className="w-full text-left px-4 py-2 text-sm text-surface-700 hover:bg-surface-50 flex items-center gap-2"
+                                        >
+                                            <Clock className="w-4 h-4 text-surface-400" /> Registrar Plazo Fatal
+                                        </button>
+                                        <button
+                                            onClick={() => handleActionClick('documentos')}
+                                            className="w-full text-left px-4 py-2 text-sm text-surface-700 hover:bg-surface-50 flex items-center gap-2"
+                                        >
+                                            <FileText className="w-4 h-4 text-surface-400" /> Subir Documento
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -14,9 +14,9 @@ from app.schemas.case import (
     ParteCreate, ParteResponse
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/cases", tags=["Cases"])
 
-@router.get("/", response_model=ExpedienteListResponse)
+@router.get("", response_model=ExpedienteListResponse)
 async def list_cases(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
@@ -65,7 +65,7 @@ async def list_cases(
         "size": size
     }
 
-@router.post("/", response_model=ExpedienteResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ExpedienteResponse, status_code=status.HTTP_201_CREATED)
 async def create_case(
     case_in: ExpedienteCreate,
     db: AsyncSession = Depends(get_db),

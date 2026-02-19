@@ -33,15 +33,16 @@ export interface CreateUserDto {
 }
 
 export const userService = {
-    async getAll(page = 1, size = 20, search = ''): Promise<UserListResponse> {
+    async getAll(page = 1, size = 20, search = '', role = ''): Promise<UserListResponse> {
         const params: any = { page, size };
         if (search) params.search = search;
-        const { data } = await api.get<UserListResponse>('/users/', { params });
+        if (role) params.role = role;
+        const { data } = await api.get<UserListResponse>('/users', { params });
         return data;
     },
 
     async create(userData: CreateUserDto): Promise<User> {
-        const { data } = await api.post<User>('/users/', userData);
+        const { data } = await api.post<User>('/users', userData);
         return data;
     },
 

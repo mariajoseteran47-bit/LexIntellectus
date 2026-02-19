@@ -22,9 +22,12 @@ export interface UploadDocumentDto {
 }
 
 export const documentService = {
-    async getByCaseId(caseId: string): Promise<Document[]> {
-        const { data } = await api.get<{ items: Document[] }>('/documents/', {
-            params: { expediente_id: caseId }
+    async getByCaseId(caseId?: string): Promise<Document[]> {
+        const params: any = {};
+        if (caseId) params.expediente_id = caseId;
+
+        const { data } = await api.get<{ items: Document[] }>('/documents', {
+            params
         });
         return data.items;
     },

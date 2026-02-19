@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function LoginPage() {
     const [isRegister, setIsRegister] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
 
     // Login form state
     const [email, setEmail] = useState('');
@@ -15,6 +17,15 @@ export default function LoginPage() {
     const [nombre, setNombre] = useState('');
     const [apellido, setApellido] = useState('');
     const [tenantNombre, setTenantNombre] = useState('');
+
+    // Load remembered email on mount
+    useEffect(() => {
+        const savedEmail = localStorage.getItem('remembered_email');
+        if (savedEmail) {
+            setEmail(savedEmail);
+            setRememberMe(true);
+        }
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,6 +54,14 @@ export default function LoginPage() {
             localStorage.setItem('access_token', data.token.access_token);
             localStorage.setItem('refresh_token', data.token.refresh_token);
             localStorage.setItem('user', JSON.stringify(data.user));
+
+            // Remember me
+            if (rememberMe) {
+                localStorage.setItem('remembered_email', email);
+            } else {
+                localStorage.removeItem('remembered_email');
+            }
+
             window.location.href = '/dashboard';
         } catch (err: any) {
             setError(err.message);
@@ -220,21 +239,48 @@ export default function LoginPage() {
 
                             <div>
                                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Contraseña</label>
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="input-field"
-                                    placeholder="••••••••"
-                                    minLength={8}
-                                    required
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="input-field pr-12"
+                                        placeholder="••••••••"
+                                        minLength={8}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600 transition-colors p-1"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                                <line x1="1" y1="1" x2="23" y2="23" />
+                                                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             {!isRegister && (
                                 <div className="flex items-center justify-between text-sm">
                                     <label className="flex items-center gap-2 text-surface-600 cursor-pointer">
-                                        <input type="checkbox" className="w-4 h-4 rounded border-surface-300 text-primary-500 focus:ring-primary-500/20" />
+                                        <input
+                                            type="checkbox"
+                                            checked={rememberMe}
+                                            onChange={(e) => setRememberMe(e.target.checked)}
+                                            className="w-4 h-4 rounded border-surface-300 text-primary-500 focus:ring-primary-500/20"
+                                        />
                                         Recordarme
                                     </label>
                                     <a href="#" className="text-primary-500 hover:text-primary-600 font-medium transition-colors">

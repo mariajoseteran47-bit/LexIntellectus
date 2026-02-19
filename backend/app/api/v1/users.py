@@ -22,11 +22,12 @@ from app.schemas.user import (
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/", response_model=UserListResponse)
+@router.get("", response_model=UserListResponse)
 async def list_users(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     status_filter: Optional[str] = Query(None, alias="status"),
+    role_filter: Optional[str] = Query(None, alias="role"),
     search: Optional[str] = None,
     current_user: Usuario = Depends(get_current_active_admin),
     db: AsyncSession = Depends(get_db),
@@ -36,6 +37,9 @@ async def list_users(
 
     if status_filter:
         query = query.where(Usuario.status == status_filter)
+
+    if role_filter:
+        query = query.where(Usuario.tipo_usuario == role_filter)
 
     if search:
         search_term = f"%{search}%"
@@ -63,7 +67,7 @@ async def list_users(
     )
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     request: UserCreate,
     current_user: Usuario = Depends(get_current_active_admin),
@@ -97,7 +101,7 @@ async def create_user(
     return UserResponse.model_validate(user)
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}/", response_model=UserResponse)
 async def get_user(
     user_id: str,
     current_user: Usuario = Depends(get_current_user),
@@ -121,7 +125,7 @@ async def get_user(
     return UserResponse.model_validate(user)
 
 
-@router.patch("/{user_id}", response_model=UserResponse)
+@router.patch("/{user_id}/", response_model=UserResponse)
 async def update_user(
     user_id: str,
     request: UserUpdate,

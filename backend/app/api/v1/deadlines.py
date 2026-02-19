@@ -11,9 +11,9 @@ from app.models.user import Usuario
 from app.models.case import PlazoFatal, Expediente
 from app.schemas.deadline import DeadlineCreate, DeadlineUpdate, DeadlineResponse, DeadlineListResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/deadlines", tags=["Deadlines"])
 
-@router.get("/", response_model=DeadlineListResponse)
+@router.get("", response_model=DeadlineListResponse)
 async def list_deadlines(
     request: Request,
     page: int = Query(1, ge=1),
@@ -65,7 +65,7 @@ async def list_deadlines(
         "size": size
     }
 
-@router.post("/", response_model=DeadlineResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=DeadlineResponse, status_code=status.HTTP_201_CREATED)
 async def create_deadline(
     request: Request,
     deadline_in: DeadlineCreate,

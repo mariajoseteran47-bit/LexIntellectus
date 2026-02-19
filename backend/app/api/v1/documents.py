@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from typing import Optional
@@ -13,7 +13,7 @@ from app.models.document import Documento
 from app.schemas.document import DocumentResponse, DocumentListResponse
 from app.services.storage import storage_service
 
-router = APIRouter()
+router = APIRouter(prefix="/documents", tags=["Documents"])
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
@@ -66,20 +66,21 @@ async def upload_document(
     
     return doc
 
-@router.get("/", response_model=DocumentListResponse)
+@router.get("", response_model=DocumentListResponse)
 async def list_documents(
     request: Request,
-    expediente_id: UUID,
+    expediente_id: Optional[UUID] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
     tenant_id = request.state.tenant_id
     
-    # Check access to expediente? Implicit via join or tenant check
-    query = select(Documento).where(
-        Documento.expediente_id == expediente_id,
-        Documento.tenant_id == tenant_id
-    ).order_by(desc(Documento.created_at))
+    query = select(Documento).where(Documento.tenant_id == tenant_id)
+    
+    if expediente_id:
+        query = query.where(Documento.expediente_id == expediente_id)
+        
+    query = query.order_by(desc(Documento.created_at))
     
     result = await db.execute(query)
     docs = result.scalars().all()

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface UserInfo {
     id: string;
@@ -104,13 +105,13 @@ export default function DashboardPage() {
                         {[
                             { label: 'Nuevo Expediente', icon: '➕', href: '/dashboard/cases/new' },
                             { label: 'Ver Expedientes', icon: '📂', href: '/dashboard/cases' },
-                            { label: 'Consultar IA', icon: '🤖', href: '#' },
-                            { label: 'Nuevo Documento', icon: '📝', href: '#' },
+                            { label: 'Consultar IA', icon: '🤖', href: '/dashboard/ai' },
+                            { label: 'Nuevo Documento', icon: '📝', href: '/dashboard/documents' },
                         ].map((action, i) => (
-                            <a key={i} href={action.href} className="w-full flex items-center gap-3 p-3 rounded-lg text-left text-sm font-medium text-surface-700 hover:bg-primary-50 hover:text-primary-600 transition-all duration-200">
+                            <Link key={i} href={action.href} className="w-full flex items-center gap-3 p-3 rounded-lg text-left text-sm font-medium text-surface-700 hover:bg-primary-50 hover:text-primary-600 transition-all duration-200">
                                 <span className="text-lg">{action.icon}</span>
                                 {action.label}
-                            </a>
+                            </Link>
                         ))}
                     </div>
                 </div>
