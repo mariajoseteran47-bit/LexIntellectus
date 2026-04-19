@@ -12,3 +12,5 @@ from .ai_agent import *
 from .audit import *
 from .case_timeline import *
 from .reports import *
+from .client_profiles import *
+from .professional_profiles import *

@@ -46,7 +46,7 @@ class UserResponse(BaseModel):
     tenant_id: UUID
     sede_id: Optional[UUID] = None
     status: str
-    mfa_enabled: bool = False
+    mfa_enabled: Optional[bool] = False
     last_login: Optional[datetime] = None
     created_at: datetime
 
