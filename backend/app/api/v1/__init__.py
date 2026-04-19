@@ -14,3 +14,4 @@ from .case_timeline import *
 from .reports import *
 from .client_profiles import *
 from .professional_profiles import *
+from .evidences import *
