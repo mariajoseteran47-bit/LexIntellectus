@@ -59,10 +59,10 @@ class RepresentativeResponse(RepresentativeBase):
 # === PerfilCliente ===
 
 class ClientProfileBase(BaseModel):
-    tipo_persona: str = "natural"
+    tipo_persona: Optional[str] = "natural"
     cedula_identidad: Optional[str] = None
     ruc: Optional[str] = None
-    nacionalidad: str = "Nicaragüense"
+    nacionalidad: Optional[str] = "Nicaragüense"
     razon_social: Optional[str] = None
     nombre_comercial: Optional[str] = None
     tipo_sociedad: Optional[str] = None
@@ -73,11 +73,11 @@ class ClientProfileBase(BaseModel):
     direccion_domicilio: Optional[str] = None
     ciudad: Optional[str] = None
     departamento: Optional[str] = None
-    pais: str = "Nicaragua"
+    pais: Optional[str] = "Nicaragua"
     fecha_primera_consulta: Optional[date] = None
     referido_por: Optional[str] = None
-    calificacion_riesgo: str = "bajo"
-    segmento: str = "individual"
+    calificacion_riesgo: Optional[str] = "bajo"
+    segmento: Optional[str] = "individual"
     notas_internas: Optional[str] = None
 
 
