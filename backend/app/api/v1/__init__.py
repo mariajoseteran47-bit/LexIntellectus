@@ -15,3 +15,4 @@ from .reports import *
 from .client_profiles import *
 from .professional_profiles import *
 from .evidences import *
+from .client_documents import *

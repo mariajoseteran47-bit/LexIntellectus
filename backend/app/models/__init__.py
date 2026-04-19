@@ -9,3 +9,4 @@ from .ai import LegalChunk, LAASession, LAAMessage, LAACaseTheory, LAAValidation
 from .professional import PerfilProfesional
 from .client import PerfilCliente, RepresentanteLegal
 from .evidence import Prueba, PruebaDocumento
+from .client_document import DocumentoCliente

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import {
     Users, Search, Plus, Mail, Phone, MoreVertical, Shield,
     Building2, User as UserIcon, FileText, ChevronDown, ChevronUp,
-    Briefcase, MapPin, Hash, Calendar, AlertTriangle, CheckCircle2, X
+    Briefcase, MapPin, Hash, Calendar, AlertTriangle, CheckCircle2, X,
+    Upload, Download, Trash2, Paperclip
 } from 'lucide-react';
 import { userService, User, CreateUserDto } from '@/services/userService';
 import api from '@/lib/api';
@@ -334,6 +335,9 @@ export default function ClientsPage() {
                                                         <AlertTriangle className="w-4 h-4" /> Esta persona jurídica no tiene representantes legales registrados.
                                                     </p>
                                                 )}
+
+                                                {/* Documents Section */}
+                                                <ClientDocuments profileId={profile.id} />
                                             </>
                                         ) : (
                                             <p className="text-sm text-surface-500 italic">Este cliente no tiene perfil extendido. Puede agregarlo desde la edición del cliente.</p>
@@ -596,6 +600,186 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
         <div>
             <p className="text-[10px] font-bold text-surface-400 uppercase tracking-wider">{label}</p>
             <p className="text-sm text-surface-700 mt-0.5">{value || '—'}</p>
+        </div>
+    );
+}
+
+const docTypeLabels: Record<string, string> = {
+    ruc: 'Constancia de RUC',
+    cedula_identidad: 'Cédula de Identidad',
+    pasaporte: 'Pasaporte',
+    poder_general: 'Poder General',
+    poder_especial: 'Poder Especial',
+    escritura_constitucion: 'Escritura de Constitución',
+    reforma_estatutaria: 'Reforma Estatutaria',
+    declaracion_beneficiario: 'Declaración Beneficiario Final',
+    matricula_alcaldia: 'Matrícula de Alcaldía',
+    registro_mercantil: 'Registro Mercantil',
+    solvencia_fiscal: 'Solvencia Fiscal (DGI)',
+    solvencia_municipal: 'Solvencia Municipal',
+    estados_financieros: 'Estados Financieros',
+    contrato: 'Contrato',
+    acta_junta_directiva: 'Acta Junta Directiva',
+    certificacion_acciones: 'Certificación de Acciones',
+    otro: 'Otro Documento',
+};
+
+interface ClientDoc {
+    id: string;
+    tipo_documento: string;
+    nombre_archivo: string;
+    tipo_archivo?: string;
+    tamano_bytes?: number;
+    descripcion?: string;
+    numero_documento?: string;
+    vigente: boolean;
+    download_url?: string;
+    created_at: string;
+}
+
+function ClientDocuments({ profileId }: { profileId: string }) {
+    const [docs, setDocs] = useState<ClientDoc[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showUpload, setShowUpload] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadType, setUploadType] = useState('ruc');
+    const [uploadDesc, setUploadDesc] = useState('');
+    const [uploadNumero, setUploadNumero] = useState('');
+    const fileInputRef = useState<HTMLInputElement | null>(null);
+
+    useEffect(() => { fetchDocs(); }, [profileId]);
+
+    const fetchDocs = async () => {
+        try {
+            const { data } = await api.get(`/client-documents/${profileId}`);
+            setDocs(data.items || []);
+        } catch { /* ignore */ } finally { setLoading(false); }
+    };
+
+    const handleUpload = async (file: File) => {
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('tipo_documento', uploadType);
+            if (uploadDesc) formData.append('descripcion', uploadDesc);
+            if (uploadNumero) formData.append('numero_documento', uploadNumero);
+
+            await api.post(`/client-documents/${profileId}/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setShowUpload(false);
+            setUploadDesc('');
+            setUploadNumero('');
+            fetchDocs();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Error al subir documento');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleDelete = async (docId: string) => {
+        if (!confirm('¿Eliminar este documento?')) return;
+        try {
+            await api.delete(`/client-documents/${profileId}/${docId}`);
+            fetchDocs();
+        } catch { alert('Error al eliminar'); }
+    };
+
+    const formatSize = (bytes?: number) => {
+        if (!bytes) return '';
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    return (
+        <div className="mt-4">
+            <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-surface-700 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4 text-primary-500" /> Documentos del Cliente
+                </h4>
+                <button onClick={() => setShowUpload(!showUpload)}
+                    className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5" /> Subir Documento
+                </button>
+            </div>
+
+            {/* Upload Form */}
+            {showUpload && (
+                <div className="p-4 bg-white rounded-lg border border-primary-200 mb-3 space-y-3 animate-fade-in">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-surface-500 uppercase tracking-wider">Tipo de Documento</label>
+                            <select className="input w-full text-sm" value={uploadType} onChange={e => setUploadType(e.target.value)}>
+                                {Object.entries(docTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-surface-500 uppercase tracking-wider">N° Documento (opcional)</label>
+                            <input type="text" className="input w-full text-sm" placeholder="Ej: J031000098765"
+                                value={uploadNumero} onChange={e => setUploadNumero(e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-surface-500 uppercase tracking-wider">Descripción (opcional)</label>
+                        <input type="text" className="input w-full text-sm" placeholder="Breve descripción del documento"
+                            value={uploadDesc} onChange={e => setUploadDesc(e.target.value)} />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed cursor-pointer transition-all ${uploading ? 'border-surface-300 bg-surface-50 text-surface-400' : 'border-primary-300 bg-primary-50/50 text-primary-600 hover:bg-primary-50'}`}>
+                            <Upload className="w-4 h-4" />
+                            <span className="text-sm font-medium">{uploading ? 'Subiendo...' : 'Seleccionar archivo (PDF, DOC, imagen)'}</span>
+                            <input type="file" className="hidden" disabled={uploading}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tiff"
+                                onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); }} />
+                        </label>
+                        <button onClick={() => setShowUpload(false)} className="text-surface-400 hover:text-surface-600">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Document List */}
+            {loading ? (
+                <p className="text-xs text-surface-400">Cargando documentos...</p>
+            ) : docs.length === 0 ? (
+                <p className="text-xs text-surface-400 italic p-3 bg-surface-50 rounded-lg">No hay documentos registrados para este cliente.</p>
+            ) : (
+                <div className="space-y-2">
+                    {docs.map(doc => (
+                        <div key={doc.id} className="p-3 bg-white rounded-lg border border-surface-200 flex items-center justify-between group hover:border-primary-200 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-primary-50 rounded-lg flex items-center justify-center">
+                                    <FileText className="w-4 h-4 text-primary-500" />
+                                </div>
+                                <div>
+                                    <p className="font-medium text-surface-800 text-sm">{doc.nombre_archivo}</p>
+                                    <p className="text-[10px] text-surface-500 mt-0.5">
+                                        {docTypeLabels[doc.tipo_documento] || doc.tipo_documento}
+                                        {doc.numero_documento && ` · N° ${doc.numero_documento}`}
+                                        {doc.tamano_bytes && ` · ${formatSize(doc.tamano_bytes)}`}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {doc.download_url && (
+                                    <a href={doc.download_url} target="_blank" rel="noopener noreferrer"
+                                        className="p-1.5 rounded-lg hover:bg-primary-50 text-primary-500" title="Descargar">
+                                        <Download className="w-4 h-4" />
+                                    </a>
+                                )}
+                                <button onClick={() => handleDelete(doc.id)}
+                                    className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title="Eliminar">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
