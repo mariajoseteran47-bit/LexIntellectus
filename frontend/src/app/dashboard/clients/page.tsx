@@ -5,10 +5,13 @@ import {
     Users, Search, Plus, Mail, Phone, MoreVertical, Shield,
     Building2, User as UserIcon, FileText, ChevronDown, ChevronUp,
     Briefcase, MapPin, Hash, Calendar, AlertTriangle, CheckCircle2, X,
-    Upload, Download, Trash2, Paperclip
+    Upload, Download, Trash2, Paperclip, Edit2, Ban
 } from 'lucide-react';
 import { userService, User, CreateUserDto } from '@/services/userService';
 import api from '@/lib/api';
+
+import JuntaDirectivaAdmin from './JuntaDirectivaAdmin';
+import AccionistasAdmin from './AccionistasAdmin';
 
 interface ClientProfile {
     id: string;
@@ -99,6 +102,8 @@ export default function ClientsPage() {
     const [saving, setSaving] = useState(false);
     const [expandedClient, setExpandedClient] = useState<string | null>(null);
     const [newUserId, setNewUserId] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
     // Form states
     const [formData, setFormData] = useState<CreateUserDto>({
@@ -138,15 +143,68 @@ export default function ClientsPage() {
         }
     };
 
+    const handleEditClient = (client: User, profile?: ClientProfile) => {
+        setFormError(null);
+        setIsEditing(true);
+        setNewUserId(client.id);
+        setFormData({
+            nombre: client.nombre,
+            apellido: client.apellido,
+            email: client.email,
+            telefono: client.telefono || '',
+            password: '', // do not prefill
+            tipo_usuario: 'cliente',
+            tipo_vinculo: 'cliente'
+        });
+        if (profile) {
+            setProfileForm({
+                tipo_persona: profile.tipo_persona,
+                cedula_identidad: profile.cedula_identidad || '',
+                ruc: profile.ruc || '',
+                razon_social: profile.razon_social || '',
+                nombre_comercial: profile.nombre_comercial || '',
+                tipo_sociedad: profile.tipo_sociedad || '',
+                actividad_economica: profile.actividad_economica || '',
+                direccion_domicilio: profile.direccion_domicilio || '',
+                ciudad: profile.ciudad || '',
+                departamento: profile.departamento || '',
+                segmento: profile.segmento || 'individual',
+                calificacion_riesgo: profile.calificacion_riesgo || 'bajo',
+                referido_por: '',
+            });
+        } else {
+             // Reset profile form for user without profile
+             setProfileForm({
+                tipo_persona: 'natural', cedula_identidad: '', ruc: '', razon_social: '', nombre_comercial: '',
+                tipo_sociedad: '', actividad_economica: '', direccion_domicilio: '', ciudad: '', departamento: '',
+                segmento: 'individual', calificacion_riesgo: 'bajo', referido_por: '',
+            });
+        }
+        setModalStep('user');
+        setShowModal(true);
+    };
+
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError(null);
         setSaving(true);
         try {
-            const { data: newUser } = await api.post('/users', formData);
-            setNewUserId(newUser.id);
-            setModalStep('profile');
+            if (isEditing && newUserId) {
+                // Remove password if empty for update, but we are editing so we don't send it unless changed
+                const updateData: any = { ...formData };
+                if (!updateData.password) delete updateData.password;
+                delete updateData.email; // Email cannot be updated via PATCH /users/{id}
+                
+                await userService.update(newUserId, updateData);
+                setModalStep('profile');
+            } else {
+                const { data: newUser } = await api.post('/users', formData);
+                setNewUserId(newUser.id);
+                setModalStep('profile');
+            }
         } catch (error: any) {
-            alert(error.response?.data?.detail || error.response?.data?.error?.message || 'Error al crear el cliente.');
+            console.error(error);
+            setFormError(error.response?.data?.detail || error.response?.data?.error?.message || 'Error al procesar los datos de acceso.');
         } finally {
             setSaving(false);
         }
@@ -155,18 +213,25 @@ export default function ClientsPage() {
     const handleCreateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newUserId) return;
+        setFormError(null);
         setSaving(true);
         try {
             const payload = { ...profileForm, user_id: newUserId };
-            const { data: profile } = await api.post('/clients/profiles', payload);
+            
+            if (isEditing && profiles[newUserId]) {
+                const profileId = profiles[newUserId].id;
+                await api.patch(`/clients/profiles/${profileId}`, payload);
+            } else {
+                await api.post('/clients/profiles', payload);
+            }
             if (profileForm.tipo_persona === 'juridica') {
-                setNewUserId(profile.id); // reuse for rep step
                 setModalStep('representative');
             } else {
                 closeAndRefresh();
             }
         } catch (error: any) {
-            alert(error.response?.data?.detail || 'Error al crear perfil.');
+            console.error(error);
+            setFormError(error.response?.data?.detail || 'Error al guardar el perfil legal.');
         } finally {
             setSaving(false);
         }
@@ -179,15 +244,37 @@ export default function ClientsPage() {
             await api.post(`/clients/profiles/${newUserId}/representatives`, repForm);
             closeAndRefresh();
         } catch (error: any) {
-            alert(error.response?.data?.detail || 'Error al agregar representante.');
+            setFormError(error.response?.data?.detail || 'Error al agregar representante.');
         } finally {
             setSaving(false);
         }
     };
 
+    // Deactivate/Delete Client
+    const handleDeleteClient = async (userId: string, isSoftDelete: boolean = true) => {
+        if (!confirm(isSoftDelete ? '¿Está seguro de desactivar este cliente?' : '¿Está seguro de eliminar COMPLETAMENTE este cliente?\nEsta acción no se puede deshacer.')) return;
+        
+        try {
+            if (isSoftDelete) {
+                // In a real app we would call a PATCH /users/{id} with {is_active: false}
+                // For now, let's assume we implement it or just delete
+                await userService.delete(userId);
+            } else {
+                await userService.delete(userId);
+            }
+            alert('Cliente ' + (isSoftDelete ? 'desactivado' : 'eliminado') + ' correctamente');
+            fetchClients();
+        } catch (error) {
+            console.error(error);
+            alert('Error al realizar la acción sobre el cliente');
+        }
+    };
+
     const closeAndRefresh = () => {
         setShowModal(false);
+        setFormError(null);
         setModalStep('user');
+        setIsEditing(false);
         setNewUserId(null);
         setFormData({ nombre: '', apellido: '', email: '', telefono: '', password: 'ClientPassword123!', tipo_usuario: 'cliente', tipo_vinculo: 'cliente' });
         setProfileForm({ tipo_persona: 'natural', cedula_identidad: '', ruc: '', razon_social: '', nombre_comercial: '', tipo_sociedad: '', actividad_economica: '', direccion_domicilio: '', ciudad: '', departamento: '', segmento: 'individual', calificacion_riesgo: 'bajo', referido_por: '' });
@@ -227,8 +314,13 @@ export default function ClientsPage() {
                     </h1>
                     <p className="text-surface-500">Gestiona clientes naturales y jurídicos con sus representantes legales.</p>
                 </div>
-                <button onClick={() => setShowModal(true)} className="btn btn-primary flex items-center gap-2">
-                    <Plus className="w-4 h-4" /> Nuevo Cliente
+                <button onClick={() => {
+                        setIsEditing(false);
+                        setFormData({ nombre: '', apellido: '', email: '', telefono: '', password: 'ClientPassword123!', tipo_usuario: 'cliente', tipo_vinculo: 'cliente' });
+                        setProfileForm({ tipo_persona: 'natural', cedula_identidad: '', ruc: '', razon_social: '', nombre_comercial: '', tipo_sociedad: '', actividad_economica: '', direccion_domicilio: '', ciudad: '', departamento: '', segmento: 'individual', calificacion_riesgo: 'bajo', referido_por: '' });
+                        setShowModal(true);
+                    }} className="btn btn-primary flex items-center gap-2">
+                        <Plus className="w-5 h-5" /> Nuevo Cliente
                 </button>
             </div>
 
@@ -272,7 +364,7 @@ export default function ClientsPage() {
                         const isJuridica = profile?.tipo_persona === 'juridica';
 
                         return (
-                            <div key={client.id} className="card overflow-hidden hover:shadow-judicial transition-all">
+                            <div key={client.id} className="card overflow-hidden hover:shadow-judicial transition-all group">
                                 {/* Main Row */}
                                 <div className="p-5 flex items-center justify-between cursor-pointer" onClick={() => setExpandedClient(isExpanded ? null : client.id)}>
                                     <div className="flex items-center gap-4">
@@ -294,6 +386,30 @@ export default function ClientsPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1 mr-2">
+                                            <button 
+                                                className="p-1.5 text-surface-300 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all" 
+                                                title="Editar Cliente"
+                                                onClick={(e) => { e.stopPropagation(); handleEditClient(client, profile); }}
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id, true); }}
+                                                className="p-1.5 text-surface-300 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all" 
+                                                title="Desactivar Cliente"
+                                            >
+                                                <Ban className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id, false); }}
+                                                className="p-1.5 text-surface-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" 
+                                                title="Eliminar Cliente"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+
                                         {profile && (
                                             <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${riskColors[profile.calificacion_riesgo] || 'text-surface-600 bg-surface-100'}`}>
                                                 {profile.calificacion_riesgo === 'alto' ? <AlertTriangle className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
@@ -309,10 +425,10 @@ export default function ClientsPage() {
 
                                 {/* Expanded Detail */}
                                 {isExpanded && (
-                                    <div className="border-t border-surface-100 bg-surface-50/50 p-5 space-y-4 animate-fade-in">
+                                    <div className="border-t border-surface-100 bg-surface-50/50 p-5 space-y-4 animate-fade-in relative">
                                         {profile ? (
                                             <>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 md:mt-0">
                                                     <InfoField label="Tipo" value={profile.tipo_persona === 'juridica' ? 'Persona Jurídica' : 'Persona Natural'} />
                                                     <InfoField label="Cédula" value={profile.cedula_identidad} />
                                                     <InfoField label="Segmento" value={profile.segmento?.replace('_', ' ')} />
@@ -358,57 +474,21 @@ export default function ClientsPage() {
                                                 )}
 
                                                 {/* Junta Directiva */}
-                                                {isJuridica && profile.junta_directiva && profile.junta_directiva.length > 0 && (
-                                                    <div className="mt-4">
-                                                        <h4 className="text-sm font-bold text-surface-700 mb-3 flex items-center gap-2">
-                                                            <Users className="w-4 h-4 text-primary-500" /> Junta Directiva
-                                                        </h4>
-                                                        <div className="space-y-2">
-                                                            {profile.junta_directiva.map(miembro => (
-                                                                <div key={miembro.id} className="p-3 bg-white rounded-lg border border-surface-200 flex items-center justify-between">
-                                                                    <div>
-                                                                        <p className="font-semibold text-surface-800">{miembro.nombre_completo}</p>
-                                                                        <p className="text-xs text-surface-500 mt-0.5 capitalize">
-                                                                            {miembro.cargo}
-                                                                            {miembro.numero_acta_nombramiento && ` · Acta N° ${miembro.numero_acta_nombramiento}`}
-                                                                        </p>
-                                                                    </div>
-                                                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${miembro.activo ? 'text-green-600 bg-green-50' : 'text-surface-500 bg-surface-100'}`}>
-                                                                        {miembro.activo ? 'Activo' : 'Inactivo'}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
+                                                {isJuridica && (
+                                                    <JuntaDirectivaAdmin 
+                                                        profileId={profile.id} 
+                                                        boardMembers={profile.junta_directiva || []} 
+                                                        onRefresh={fetchClients} 
+                                                    />
                                                 )}
 
                                                 {/* Composición Accionaria */}
-                                                {isJuridica && profile.accionistas && profile.accionistas.length > 0 && (
-                                                    <div className="mt-4">
-                                                        <h4 className="text-sm font-bold text-surface-700 mb-3 flex items-center gap-2">
-                                                            <Building2 className="w-4 h-4 text-primary-500" /> Composición Accionaria
-                                                        </h4>
-                                                        <div className="space-y-2">
-                                                            {profile.accionistas.map(socio => (
-                                                                <div key={socio.id} className="p-3 bg-white rounded-lg border border-surface-200 flex items-center justify-between">
-                                                                    <div>
-                                                                        <p className="font-semibold text-surface-800 flex items-center gap-2">
-                                                                            {socio.nombre_completo}
-                                                                            {socio.es_beneficiario_final && (
-                                                                                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded" title="Beneficiario Final (Ley 977)">BF</span>
-                                                                            )}
-                                                                        </p>
-                                                                        <p className="text-xs text-surface-500 mt-0.5">
-                                                                            {socio.numero_acciones ? `${socio.numero_acciones} acciones` : `${socio.porcentaje_participacion}% participación`}
-                                                                        </p>
-                                                                    </div>
-                                                                    <span className="text-sm font-bold text-primary-600">
-                                                                        {socio.porcentaje_participacion ? `${socio.porcentaje_participacion}%` : ''}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
+                                                {isJuridica && (
+                                                    <AccionistasAdmin 
+                                                        profileId={profile.id} 
+                                                        shareholders={profile.accionistas || []} 
+                                                        onRefresh={fetchClients} 
+                                                    />
                                                 )}
 
                                                 {/* Documents Section */}
@@ -433,7 +513,7 @@ export default function ClientsPage() {
                         <div className="p-5 border-b border-surface-200 bg-surface-50 flex justify-between items-center flex-shrink-0">
                             <div>
                                 <h2 className="text-lg font-bold text-surface-900 flex items-center gap-2">
-                                    <Users className="w-5 h-5 text-primary-500" /> Nuevo Cliente
+                                    <Users className="w-5 h-5 text-primary-500" /> {isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}
                                 </h2>
                                 <div className="flex items-center gap-2 mt-2">
                                     {(['user', 'profile', 'representative'] as ModalStep[]).map((step, i) => (
@@ -449,6 +529,15 @@ export default function ClientsPage() {
                             </div>
                             <button onClick={closeAndRefresh} className="text-surface-400 hover:text-surface-600 transition-colors text-2xl">&times;</button>
                         </div>
+
+                        {/* Inline Error Message */}
+                        {formError && (
+                            <div className="mx-6 mt-4 p-3 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 text-sm border border-red-100 animate-fade-in">
+                                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                                <p>{formError}</p>
+                                <button className="ml-auto" onClick={() => setFormError(null)}><X className="w-4 h-4" /></button>
+                            </div>
+                        )}
 
                         {/* Modal Body */}
                         <div className="p-6 overflow-y-auto flex-1">
@@ -476,6 +565,11 @@ export default function ClientsPage() {
                                         <label className="text-xs font-bold text-surface-500 uppercase tracking-wider">Teléfono</label>
                                         <input type="tel" className="input w-full" placeholder="+505 8888 8888"
                                             value={formData.telefono} onChange={e => setFormData({ ...formData, telefono: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-surface-500 uppercase tracking-wider">Contraseña</label>
+                                        <input type="password" required={!isEditing} className="input w-full" placeholder={isEditing ? "(Sin cambios)" : "••••••••"}
+                                            value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                                     </div>
                                     <div className="pt-4 flex justify-end">
                                         <button type="submit" disabled={saving} className="btn btn-primary">

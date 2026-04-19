@@ -125,7 +125,7 @@ async def get_user(
     return UserResponse.model_validate(user)
 
 
-@router.patch("/{user_id}/", response_model=UserResponse)
+@router.patch("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: str,
     request: UserUpdate,

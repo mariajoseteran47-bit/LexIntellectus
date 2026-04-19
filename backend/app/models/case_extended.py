@@ -125,7 +125,7 @@ class ActuacionProcesal(Base):
     asignado_a = relationship("Usuario", foreign_keys=[asignado_a_id])
 
 
-class NotaCaso(Base):
+class NotaInterna(Base):
     """
     Notas internas del equipo legal.
     NO son parte del expediente judicial — son estrategia interna.

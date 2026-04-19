@@ -15,7 +15,7 @@ from app.core.database import get_db
 from app.core.rbac import require_permission
 from app.models.user import Usuario
 from app.models.case import Expediente
-from app.models.case_extended import ActuacionProcesal, NotaCaso, TeoriaCaso
+from app.models.case_extended import ActuacionProcesal, NotaInterna, TeoriaCaso
 
 router = APIRouter(prefix="/cases", tags=["Case Timeline"])
 
@@ -225,14 +225,14 @@ async def list_notas(
     if not case:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
     
-    query = select(NotaCaso).where(NotaCaso.expediente_id == case_id)
+    query = select(NotaInterna).where(NotaInterna.expediente_id == case_id)
     # Filtrar notas privadas (solo el autor puede verlas)
     # OR logic: not private, OR is the author
     from sqlalchemy import or_
     query = query.where(
-        or_(NotaCaso.es_privada == False, NotaCaso.autor_id == current_user.id)
+        or_(NotaInterna.es_privada == False, NotaInterna.autor_id == current_user.id)
     )
-    query = query.order_by(desc(NotaCaso.created_at))
+    query = query.order_by(desc(NotaInterna.created_at))
     
     result = await db.execute(query)
     items = result.scalars().all()
@@ -268,7 +268,7 @@ async def create_nota(
     if not case:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
     
-    nota = NotaCaso(
+    nota = NotaInterna(
         expediente_id=case_id,
         tipo=data.tipo,
         contenido=data.contenido,

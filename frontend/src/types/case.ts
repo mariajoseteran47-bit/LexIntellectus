@@ -59,3 +59,21 @@ export interface ExpedienteListResponse {
     page: number;
     size: number;
 }
+export interface CaseStatus {
+    id: string;
+    codigo: string;
+    nombre: string;
+    color_hex?: string;
+    es_final: boolean;
+    orden: number;
+}
+
+export interface WorkflowStage {
+    id: string;
+    ramo: string;
+    tipo_proceso?: string;
+    nombre: string;
+    orden: number;
+    dias_plazo_legal?: number;
+    es_final: boolean;
+}

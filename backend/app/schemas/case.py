@@ -162,3 +162,28 @@ class ExpedienteListResponse(BaseModel):
     total: int
     page: int
     size: int
+
+
+# === Bóveda de Discusión (Notas Internas) ===
+
+class NotaInternaBase(BaseModel):
+    tipo: str = "observacion"
+    contenido: str = Field(min_length=1)
+    es_privada: bool = False
+    prioridad: str = "normal"
+
+class NotaInternaCreate(NotaInternaBase):
+    pass
+
+class NotaInternaResponse(NotaInternaBase):
+    id: UUID
+    expediente_id: UUID
+    autor_id: UUID
+    created_at: datetime
+    updated_at: datetime
+    # Nested field for frontend to show author name easily
+    autor_nombre: Optional[str] = None
+    autor_foto: Optional[str] = None
+
+    class Config:
+        from_attributes = True

@@ -15,6 +15,9 @@ import { useToast } from '@/components/ui/ToastProvider';
 import DeadlineList from '@/components/deadlines/DeadlineList';
 import DocumentList from '@/components/documents/DocumentList';
 import CaseTheoryAnalysis from '@/components/cases/CaseTheoryAnalysis';
+import CaseStatusToggle from '@/components/cases/CaseStatusToggle';
+import CaseStageToggle from '@/components/cases/CaseStageToggle';
+import WorkflowProgressBar from '@/components/cases/WorkflowProgressBar';
 import api from '@/lib/api';
 
 // === CONSTANTES POR MATERIA ===
@@ -162,7 +165,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     const loadNotas = async () => {
         setLoadingNotas(true);
         try {
-            const { data } = await api.get(`/cases/${params.id}/notas`);
+            const { data } = await api.get(`/cases/${params.id}/notes`);
             setNotas(data || []);
         } catch (e) { console.error(e); }
         finally { setLoadingNotas(false); }
@@ -203,7 +206,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         { id: 'partes', label: 'Partes', icon: Users, count: caseData.partes?.length || 0 },
         { id: 'plazos', label: 'Plazos', icon: Clock },
         { id: 'documentos', label: 'Documentos', icon: FileText },
-        { id: 'notas', label: 'Notas', icon: StickyNote, count: notas.length },
+        { id: 'notas', label: 'Bóveda de Discusión', icon: MessageSquare, count: notas.length },
         { id: 'teoria', label: 'Teoría del Caso', icon: Target },
         { id: 'ia', label: 'IA', icon: Lightbulb, badge: 'LAA' },
     ];
@@ -233,6 +236,28 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                             }`}>
                                 <Flag className="w-3 h-3 inline mr-1" />{caseData.prioridad}
                             </span>
+                            
+                            {/* Etapa Procesal (INTELIGENCIA LEGAL) */}
+                            <CaseStageToggle 
+                                caseId={caseData.id}
+                                ramo={caseData.ramo}
+                                tipoProceso={caseData.tipo_proceso}
+                                currentStageId={caseData.etapa_actual_id}
+                                onStageChange={(newId) => {
+                                    setCaseData({...caseData, etapa_actual_id: newId});
+                                    loadTimeline(); // Refrescar timeline con el evento automático
+                                }}
+                            />
+
+                            {/* Estado Procesal (GESTIÓN INTERNA) */}
+                            <CaseStatusToggle 
+                                caseId={caseData.id} 
+                                currentStatusId={caseData.estado_id} 
+                                onStatusChange={(newId) => {
+                                    setCaseData({...caseData, estado_id: newId});
+                                    loadTimeline(); // Refrescar timeline con el historial
+                                }}
+                            />
                         </div>
                         <h2 className="text-lg text-surface-700 font-medium">{caseData.resumen || 'Sin resumen'}</h2>
                         <div className="flex items-center gap-4 mt-2 text-sm text-surface-500 flex-wrap">
@@ -278,7 +303,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                                         </button>
                                         <button onClick={() => { setActiveTab('notas'); setShowNewNota(true); setShowActionMenu(false); }}
                                             className="w-full text-left px-4 py-2.5 text-sm text-surface-700 hover:bg-surface-50 flex items-center gap-2">
-                                            <StickyNote className="w-4 h-4 text-amber-500" /> Agregar Nota
+                                            <MessageSquare className="w-4 h-4 text-amber-500" /> Nueva Discusión (Nota)
                                         </button>
                                         <button onClick={() => { setActiveTab('plazos'); setShowActionMenu(false); }}
                                             className="w-full text-left px-4 py-2.5 text-sm text-surface-700 hover:bg-surface-50 flex items-center gap-2">
@@ -299,44 +324,13 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                     </div>
                 </div>
                 
-                {/* --- Barra de Progreso de Flujo Procesal --- */}
+                {/* --- Barra de Progreso de Flujo Procesal (MEJORADA) --- */}
                 {stages.length > 0 && (
-                    <div className="card p-4 overflow-hidden mt-2 bg-surface-50 border-surface-200">
-                        <div className="flex items-center gap-2 mb-3">
-                            <h3 className="text-xs font-bold text-surface-500 uppercase tracking-wider">Flujo Procesal: {caseData.tipo_proceso?.replace('_', ' ')}</h3>
-                        </div>
-                        <div className="relative flex items-center justify-between before:absolute before:inset-0 before:top-1/2 before:-translate-y-1/2 before:h-1 before:bg-surface-200 before:z-0 px-2">
-                            {stages.map((stage, idx) => {
-                                // Determinar si esta es la etapa actual, ya pasó, o está pendiente
-                                const currentStageIndex = caseData.etapa_actual_id 
-                                    ? stages.findIndex(s => s.id === caseData.etapa_actual_id)
-                                    : 0; // Asumimos la primera si no hay actual
-                                
-                                const isCompleted = idx < currentStageIndex;
-                                const isCurrent = idx === currentStageIndex;
-                                const isPending = idx > currentStageIndex;
-                                
-                                return (
-                                    <div key={stage.id} className="relative z-10 flex flex-col items-center group cursor-help">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                                            isCompleted ? 'bg-primary-500 text-white ring-4 ring-white' : 
-                                            isCurrent ? 'bg-primary-600 text-white ring-4 ring-primary-100 scale-125 shadow-md' : 
-                                            'bg-surface-100 text-surface-400 ring-4 ring-white border border-surface-300'
-                                        }`}>
-                                            {isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : (idx + 1)}
-                                        </div>
-                                        <div className={`absolute top-8 w-max max-w-[120px] text-center transition-all ${isCurrent ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                            <p className={`text-[10px] sm:text-xs font-semibold leading-tight ${isCurrent ? 'text-primary-700' : 'text-surface-600'}`}>
-                                                {stage.nombre}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        {/* Espaciador inferior para los labels absolutos */}
-                        <div className="h-8 w-full block"></div>
-                    </div>
+                    <WorkflowProgressBar 
+                        stages={stages} 
+                        currentStageId={caseData.etapa_actual_id} 
+                        tipoProceso={caseData.tipo_proceso} 
+                    />
                 )}
             </div>
 
@@ -597,13 +591,19 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                     </div>
                 )}
 
-                {/* ====== NOTAS ====== */}
+                {/* ====== BÓVEDA DE DISCUSIÓN / NOTAS ====== */}
                 {activeTab === 'notas' && (
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-semibold text-surface-800">Notas Internas del Equipo</h3>
-                            <button onClick={() => setShowNewNota(true)} className="btn btn-sm btn-primary gap-1">
-                                <Plus className="w-4 h-4" /> Nueva Nota
+                        <div className="flex justify-between items-center text-white bg-surface-900 -mx-4 -mt-4 p-6 sm:mx-0 sm:mt-0 sm:rounded-xl shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-surface-800 rounded-lg"><MessageSquare className="w-6 h-6 text-primary-400" /></div>
+                                <div>
+                                    <h3 className="font-bold text-lg">Bóveda de Discusión</h3>
+                                    <p className="text-sm text-surface-300">Hilos privados y registros de colaboración del equipo</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowNewNota(true)} className="btn btn-primary gap-1 shrink-0">
+                                <Plus className="w-4 h-4" /> Nuevo Mensaje
                             </button>
                         </div>
 
@@ -665,26 +665,38 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {notas.map((nota) => {
+                            <div className="space-y-4">
+                                {notas.map((nota: any) => {
                                     const cfg = NOTE_TYPE_CONFIG[nota.tipo] || NOTE_TYPE_CONFIG.observacion;
                                     return (
-                                        <div key={nota.id} className={`card p-4 ${nota.prioridad === 'urgente' ? 'border-l-4 border-l-red-500' : nota.prioridad === 'importante' ? 'border-l-4 border-l-amber-400' : ''}`}>
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>
-                                                            {cfg.icon} {cfg.label}
-                                                        </span>
-                                                        {nota.es_privada && (
-                                                            <span className="text-xs text-surface-400 flex items-center gap-1">🔒 Privada</span>
-                                                        )}
+                                        <div key={nota.id} className={`card p-5 ${nota.prioridad === 'urgente' ? 'border-l-4 border-l-red-500' : nota.prioridad === 'importante' ? 'border-l-4 border-l-amber-400' : 'border-l-4 border-l-surface-200'}`}>
+                                            <div className="flex items-start gap-4">
+                                                {nota.autor_foto ? (
+                                                    <img src={nota.autor_foto} alt="Author" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-surface-100 flex items-center justify-center shrink-0 border border-surface-200">
+                                                        <User className="w-5 h-5 text-surface-400" />
                                                     </div>
-                                                    <p className="text-sm text-surface-800 whitespace-pre-wrap">{nota.contenido}</p>
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-semibold text-surface-900">{nota.autor_nombre || 'Sistema'}</span>
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${cfg.color}`}>
+                                                                {cfg.icon} {cfg.label}
+                                                            </span>
+                                                            {nota.es_privada && (
+                                                                <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full uppercase font-bold flex items-center gap-1"><Shield className="w-3 h-3" /> Equipo Interno</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-xs text-surface-400 mt-1 sm:mt-0 shrink-0">
+                                                            {new Date(nota.created_at).toLocaleString('es-NI', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="bg-surface-50 rounded-lg p-4 text-sm text-surface-800 whitespace-pre-wrap leading-relaxed border border-surface-100">
+                                                        {nota.contenido}
+                                                    </div>
                                                 </div>
-                                                <span className="text-xs text-surface-400 shrink-0">
-                                                    {new Date(nota.created_at).toLocaleDateString('es-NI', { day: 'numeric', month: 'short' })}
-                                                </span>
                                             </div>
                                         </div>
                                     );

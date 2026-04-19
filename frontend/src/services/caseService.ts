@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { Expediente, ExpedienteListResponse, ParteProcesal } from '@/types/case';
+import { Expediente, ExpedienteListResponse, ParteProcesal, CaseStatus, WorkflowStage } from '@/types/case';
 
 export interface CaseFilterParams {
     page?: number;
@@ -31,6 +31,32 @@ export const caseService = {
     // Update case
     async update(id: string, caseData: Partial<Expediente>): Promise<Expediente> {
         const { data } = await api.patch<Expediente>(`/cases/${id}`, caseData);
+        return data;
+    },
+
+    // Change case status
+    async changeStatus(id: string, estadoId: string): Promise<Expediente> {
+        const { data } = await api.patch<Expediente>(`/cases/${id}/status`, { estado_id: estadoId });
+        return data;
+    },
+
+    // Get configured statuses
+    async getStatuses(): Promise<CaseStatus[]> {
+        const { data } = await api.get<CaseStatus[]>('/cases/config/statuses');
+        return data;
+    },
+
+    // Change case workflow stage
+    async changeStage(id: string, etapaId: string): Promise<any> {
+        const { data } = await api.patch(`/cases/${id}/stage`, { etapa_id: etapaId });
+        return data;
+    },
+
+    // Get workflow stages by ramo and process type
+    async getStages(ramo: string, tipoProceso?: string): Promise<WorkflowStage[]> {
+        const { data } = await api.get<WorkflowStage[]>('/cases/workflow/stages', { 
+            params: { ramo, tipo_proceso: tipoProceso } 
+        });
         return data;
     },
 

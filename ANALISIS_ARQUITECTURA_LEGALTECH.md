@@ -4,6 +4,9 @@ Este documento representa la visión estratégica y arquitectura de datos a impl
 
 ---
 
+## 📌 Deuda Técnica / Pendientes
+*   [x] **Fase 2:** Agregar submódulos / UI en la vista expandida del cliente para administrar CRUD de "Junta Directiva" y "Composición Accionaria". (Actual state: Read-only en la UI, funcional en API).
+
 ## 1. Gestión de Talento Legal y Enrutamiento Inteligente (HR & Smart Routing)
 El valor base de una firma es el tiempo y especialidad de su gente. 
 *   **Perfiles Estructurados:** Diferenciación entre Socio (Partner), Asociado Senior, Asociado Junior, Paralegal, y Soporte Administrativo.
