@@ -6,19 +6,19 @@ from datetime import date, datetime
 class DeadlineBase(BaseModel):
     expediente_id: UUID
     descripcion: str = Field(min_length=3, max_length=255)
-    tipo_plazo: str = "procesal" # enum
+    tipo_plazo: Optional[str] = "procesal"
     fecha_inicio: Optional[date] = None
     fecha_vencimiento: date
     hora_vencimiento: Optional[str] = "23:59:59"
-    dias_tipo: str = "habiles"
+    dias_tipo: Optional[str] = "habiles"
     base_legal: Optional[str] = None
     usuario_responsable_id: Optional[UUID] = None
-    status: str = "pendiente"
-    prioridad: str = "normal"
+    status: Optional[str] = "pendiente"
+    prioridad: Optional[str] = "normal"
     # Alerts setup
-    alerta_72h_enviada: bool = False
-    alerta_24h_enviada: bool = False
-    alerta_1h_enviada: bool = False
+    alerta_72h_enviada: Optional[bool] = False
+    alerta_24h_enviada: Optional[bool] = False
+    alerta_1h_enviada: Optional[bool] = False
     acciones_sugeridas_ia: Optional[str] = None
 
 class DeadlineCreate(DeadlineBase):

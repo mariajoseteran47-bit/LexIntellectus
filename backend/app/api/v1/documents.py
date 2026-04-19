@@ -7,11 +7,13 @@ import uuid
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.rbac import require_permission
 from app.models.user import Usuario
 from app.models.case import Expediente
 from app.models.document import Documento
 from app.schemas.document import DocumentResponse, DocumentListResponse
 from app.services.storage import storage_service
+from app.core.error_handlers import validate_upload_file
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -23,7 +25,7 @@ async def upload_document(
     descripcion: Optional[str] = Form(None),
     categoria: str = Form("general"),
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("documents.read"))
 ):
     tenant_id = request.state.tenant_id
     
@@ -37,6 +39,9 @@ async def upload_document(
 
     # Read file content
     content = await file.read()
+    
+    # Validate file type, size, and extension
+    validate_upload_file(file.filename, file.content_type, len(content))
     
     # Generate storage path: tenant_id/case_id/uuid_filename
     file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'bin'
@@ -71,7 +76,7 @@ async def list_documents(
     request: Request,
     expediente_id: Optional[UUID] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("documents.read"))
 ):
     tenant_id = request.state.tenant_id
     
@@ -99,7 +104,7 @@ async def download_document(
     request: Request,
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("documents.read"))
 ):
     tenant_id = request.state.tenant_id
     
@@ -121,7 +126,7 @@ async def delete_document(
     request: Request,
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("documents.read"))
 ):
     tenant_id = request.state.tenant_id
     

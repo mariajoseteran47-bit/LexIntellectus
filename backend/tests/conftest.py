@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 import asyncio
 from typing import AsyncGenerator
 from httpx import AsyncClient
@@ -14,7 +15,8 @@ from app.core.config import settings
 settings.POSTGRES_DB = "lexintellectus_test"
 
 # Use the same URL but different DB
-TEST_DATABASE_URL = settings.database_url.replace("lexintellectus", "lexintellectus_test")
+url_parts = str(settings.database_url).rsplit("/", 1)
+TEST_DATABASE_URL = f"{url_parts[0]}/lexintellectus_test"
 
 engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
@@ -25,7 +27,7 @@ def event_loop():
     yield loop
     loop.close()
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -34,12 +36,12 @@ async def setup_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
         yield session
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(db_session) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db():
         yield db_session

@@ -41,6 +41,11 @@ export const aiService = {
         return response.data;
     },
 
+    getStats: async () => {
+        const response = await api.get('/ai/stats');
+        return response.data;
+    },
+
     ingestDocument: async (file: File, sourceType: string = 'ley') => {
         const formData = new FormData();
         formData.append('file', file);
@@ -54,3 +59,4 @@ export const aiService = {
         return response.data;
     }
 };
+// End of aiService

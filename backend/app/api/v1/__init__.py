@@ -8,3 +8,7 @@ from .deadlines import *
 from .documents import *
 from .notifications import *
 from .dashboard import *
+from .ai_agent import *
+from .audit import *
+from .case_timeline import *
+from .reports import *

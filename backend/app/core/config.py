@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = "change_me"
     EMAILS_ENABLED: bool = False
 
+    # AI / Gemini
+    GOOGLE_API_KEY: str = ""
 
     @property
     def database_url(self) -> str:
@@ -81,9 +83,16 @@ class Settings(BaseSettings):
 # Try loading from .env files in order of preference
 import pathlib
 
-_env_path = pathlib.Path(__file__).resolve().parent.parent.parent / ".env"
+_base_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+_env_path = _base_dir / ".env"
+_env_local_path = _base_dir / ".env.local"
+
 if _env_path.exists():
-    settings = Settings(_env_file=str(_env_path))
+    # Load .env first, then .env.local overrides for sensitive keys
+    settings = Settings(
+        _env_file=(str(_env_path), str(_env_local_path)) if _env_local_path.exists() else str(_env_path)
+    )
 else:
     # In Docker, env vars come from the container environment
     settings = Settings()
+

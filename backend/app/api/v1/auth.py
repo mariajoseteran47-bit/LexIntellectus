@@ -3,7 +3,7 @@ LexIntellectus - Auth API
 Login, registration, and token refresh endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
@@ -240,3 +240,33 @@ async def get_me(
         status=str(current_user.status),
         last_login=current_user.last_login,
     )
+
+
+@router.post("/change-password")
+async def change_password(
+    current_password: str = Body(...),
+    new_password: str = Body(...),
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Change the current user's password."""
+
+    # Verify current password
+    if not verify_password(current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña actual es incorrecta",
+        )
+
+    if len(new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La nueva contraseña debe tener al menos 6 caracteres",
+        )
+
+    # Update password
+    current_user.password_hash = hash_password(new_password)
+    await db.commit()
+
+    return {"message": "Contraseña actualizada correctamente"}
+

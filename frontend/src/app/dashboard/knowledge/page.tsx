@@ -9,6 +9,25 @@ export default function KnowledgeIngestionPage() {
     const [sourceType, setSourceType] = useState('ley');
     const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
     const [result, setResult] = useState<any>(null);
+    const [stats, setStats] = useState<any>(null);
+
+    React.useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const token = localStorage.getItem('access_token');
+                const res = await fetch('/api/v1/ai/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setStats(data);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        };
+        fetchStats();
+    }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -24,6 +43,19 @@ export default function KnowledgeIngestionPage() {
             setResult(resp);
             setStatus('success');
             setFile(null);
+            // Refresh stats
+            try {
+                const token = localStorage.getItem('access_token');
+                const res = await fetch('/api/v1/ai/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setStats(data);
+                }
+            } catch (err) {
+                console.error('Error fetching stats:', err);
+            }
         } catch (error) {
             console.error(error);
             setStatus('error');
@@ -39,6 +71,17 @@ export default function KnowledgeIngestionPage() {
                 <p className="text-surface-600">
                     Alimenta la inteligencia de LexIntellectus subiendo el Digesto Jurídico, Jurisprudencia de la CSJ y Gacetas.
                 </p>
+                {stats && !stats.api_key_configured && (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 mt-4">
+                        <AlertCircle className="text-amber-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold text-amber-800">Falta GOOGLE_API_KEY</p>
+                            <p className="text-xs text-amber-700">
+                                Las funciones de IA, incluyendo la ingesta vectorial, no funcionarán hasta que configures la clave `GOOGLE_API_KEY` en el archivo `.env` del servidor.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -47,18 +90,18 @@ export default function KnowledgeIngestionPage() {
                     <h3 className="text-sm font-bold text-[#D4AF37] uppercase tracking-wider">Estado de la Base</h3>
                     <div className="flex items-center justify-between">
                         <span className="text-surface-300 text-sm">Leyes Indexadas:</span>
-                        <span className="font-mono font-bold">124</span>
+                        <span className="font-mono font-bold">{stats?.leyes_count ?? '...'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span className="text-surface-300 text-sm">Jurisprudencia:</span>
-                        <span className="font-mono font-bold">850</span>
+                        <span className="font-mono font-bold">{stats?.jurisprudencia_count ?? '...'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span className="text-surface-300 text-sm">Total Chunks (Vectores):</span>
-                        <span className="font-mono font-bold text-[#D4AF37]">45,200</span>
+                        <span className="font-mono font-bold text-[#D4AF37]">{stats?.total_chunks ?? '...'}</span>
                     </div>
                     <div className="pt-4 border-t border-white/10">
-                        <p className="text-[10px] text-surface-400">Última actualización: Hace 2 horas</p>
+                        <p className="text-[10px] text-surface-400">Última actualización: Justo ahora</p>
                     </div>
                 </div>
 

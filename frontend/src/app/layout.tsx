@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ToastProvider } from '@/components/ui/ToastProvider';
 
 export const metadata: Metadata = {
     title: 'LexIntellectus — ERP Legal SaaS',
@@ -15,7 +16,9 @@ export default function RootLayout({
     return (
         <html lang="es">
             <body className="min-h-screen">
-                {children}
+                <ToastProvider>
+                    {children}
+                </ToastProvider>
             </body>
         </html>
     );

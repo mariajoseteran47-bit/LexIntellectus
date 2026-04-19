@@ -60,7 +60,8 @@ class Expediente(Base):
     
     # State & Workflows
     estado_id = Column(UUID(as_uuid=True), ForeignKey("case_statuses.id"), nullable=True)
-    workflow_instance_id = Column(UUID(as_uuid=True), nullable=True) # Future link
+    etapa_actual_id = Column(UUID(as_uuid=True), ForeignKey("workflow_stages.id"), nullable=True)
+    tipo_proceso = Column(String(100))  # ordinario, ejecutivo, monitorio, divorcio_contencioso...
     
     # Details
     resumen = Column(Text)
@@ -69,7 +70,9 @@ class Expediente(Base):
     
     # Responsibility
     abogado_responsable_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    cliente_principal_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True) # Assuming clients are Users for now
+    cliente_principal_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    co_abogados = Column(JSONB, default=[])  # [user_ids] — equipo de apoyo
+    abogado_contraparte = Column(String(255))  # Nombre del abogado de contraparte
     
     prioridad = Column(
         Enum('baja', 'normal', 'alta', 'urgente', name="case_priority"),
@@ -79,11 +82,27 @@ class Expediente(Base):
     moneda = Column(String(3), default="NIO")
     observaciones_ia = Column(Text)
     
+    # === RESULTADO / RESOLUCIÓN (cuando cierra el caso) ===
+    tipo_resolucion = Column(String(100))  # sentencia_favorable, conciliacion, desistimiento...
+    numero_sentencia = Column(String(100))
+    fecha_sentencia = Column(Date)
+    resultado_detalle = Column(Text)
+    monto_adjudicado = Column(Numeric(15, 2))
+    recurso_pendiente = Column(Boolean, default=False)
+    
+    # === CAMPOS ESPECÍFICOS POR MATERIA (JSONB flexible) ===
+    datos_materia = Column(JSONB, default={})
+    # Penal: {delito_imputado, medida_cautelar_vigente, fiscal_asignado}
+    # Familia: {pension_provisional, menores_involucrados, tipo_divorcio}
+    # Laboral: {salario_base, fecha_inicio_laboral, fecha_despido, causa_despido}
+    # Notarial: {numero_escritura, tomo_protocolo, folio_protocolo, tipo_acto}
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     estado = relationship("EstadoExpediente", back_populates="expedientes")
+    etapa_actual = relationship("EtapaProcesal", foreign_keys=[etapa_actual_id])
     abogado_responsable = relationship("Usuario", foreign_keys=[abogado_responsable_id])
     cliente_principal = relationship("Usuario", foreign_keys=[cliente_principal_id])
     partes = relationship("ParteProcesal", back_populates="expediente", cascade="all, delete-orphan")

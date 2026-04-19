@@ -14,7 +14,9 @@ from app.services.prompts import PromptLibrary
 class RAGEngine:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.api_key = settings.GOOGLE_API_KEY if hasattr(settings, 'GOOGLE_API_KEY') else os.getenv("GOOGLE_API_KEY")
+        self.api_key = settings.GOOGLE_API_KEY or os.getenv("GOOGLE_API_KEY", "")
+        if not self.api_key:
+            print("⚠️  WARNING: GOOGLE_API_KEY not configured. AI features will fail.")
         genai.configure(api_key=self.api_key)
         self.embedding_model = "models/gemini-embedding-001"
         self.chat_model = "models/gemini-2.5-flash"
@@ -89,30 +91,61 @@ class RAGEngine:
         return response_text
 
     async def analyze_strategy(self, session: LAASession, case_data: Dict) -> LAACaseTheory:
-        # Mode Strategist
-        system_prompt = PromptLibrary.get_prompt('estratega', case_data=json.dumps(case_data))
+        """Mode: Strategist — Generate Case Theory using Gemini."""
+        system_prompt = PromptLibrary.get_prompt('estratega', case_data=json.dumps(case_data, ensure_ascii=False))
         
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "Generar Teoría del Caso ahora."}
-        ]
+        model = genai.GenerativeModel(self.chat_model)
+        full_prompt = f"{system_prompt}\n\nGenerar Teoría del Caso ahora."
         
-        completion = await self.client.chat.completions.create(
-            model=self.chat_model,
-            messages=messages,
-            response_format={"type": "json_object"}
-        )
-        
-        analysis_json = json.loads(completion.choices[0].message.content)
+        try:
+            response = model.generate_content(full_prompt)
+            response_text = response.text
+            
+            # Try to parse JSON from the response
+            # Sometimes the model wraps JSON in markdown code blocks
+            json_text = response_text
+            if "```json" in json_text:
+                json_text = json_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in json_text:
+                json_text = json_text.split("```")[1].split("```")[0].strip()
+            
+            analysis_json = json.loads(json_text)
+            teoria = analysis_json.get('teoria_caso', {})
+        except json.JSONDecodeError:
+            # If JSON parsing fails, create a basic theory from raw text
+            teoria = {
+                "resumen_ejecutivo": response_text[:500],
+                "estrategia": "Ver respuesta completa del análisis.",
+            }
+        except Exception as e:
+            print(f"Strategy analysis error: {e}")
+            teoria = {
+                "resumen_ejecutivo": f"Error al generar análisis: {str(e)}",
+            }
         
         theory = LAACaseTheory(
             session_id=session.id,
             expediente_id=session.expediente_id,
-            resumen_ejecutivo=analysis_json.get('teoria_caso', {}).get('resumen_ejecutivo'),
-            hechos_facticos_json=analysis_json.get('teoria_caso', {}).get('hechos_facticos'),
-            # ... map other fields
-            estrategia_recomendada=analysis_json.get('teoria_caso', {}).get('estrategia')
+            resumen_ejecutivo=teoria.get('resumen_ejecutivo'),
+            hechos_facticos_json=teoria.get('hechos_facticos'),
+            fundamento_juridico_json=teoria.get('fundamento_juridico'),
+            pruebas_json=teoria.get('pruebas'),
+            fortalezas=teoria.get('fortalezas'),
+            debilidades=teoria.get('debilidades'),
+            estrategia_recomendada=teoria.get('estrategia'),
+            proximos_pasos=teoria.get('proximos_pasos'),
         )
         self.db.add(theory)
+        
+        # Save assistant message
+        msg = LAAMessage(
+            session_id=session.id,
+            rol='assistant',
+            contenido=json.dumps(teoria, ensure_ascii=False) if isinstance(teoria, dict) else str(teoria),
+            modelo_usado=self.chat_model
+        )
+        self.db.add(msg)
+        
         await self.db.commit()
         return theory
+

@@ -82,6 +82,7 @@ class ExpedienteBase(BaseModel):
     sede_id: Optional[UUID] = None
     numero_causa: Optional[str] = None
     ramo: str # enum
+    tipo_proceso: Optional[str] = None  # ordinario, ejecutivo, etc.
     materia_especifica: Optional[str] = None
     juzgado: Optional[str] = None
     juez: Optional[str] = None
@@ -92,10 +93,21 @@ class ExpedienteBase(BaseModel):
     fecha_cierre: Optional[date] = None
     abogado_responsable_id: Optional[UUID] = None
     cliente_principal_id: Optional[UUID] = None
+    co_abogados: Optional[list] = []
+    abogado_contraparte: Optional[str] = None
     prioridad: str = "normal"
     valor_estimado: Optional[Decimal] = None
-    moneda: str = "NIO"
+    moneda: Optional[str] = "NIO"
     observaciones_ia: Optional[str] = None
+    # Resolution
+    tipo_resolucion: Optional[str] = None
+    numero_sentencia: Optional[str] = None
+    fecha_sentencia: Optional[date] = None
+    resultado_detalle: Optional[str] = None
+    monto_adjudicado: Optional[Decimal] = None
+    recurso_pendiente: Optional[bool] = False
+    # Materia-specific data (flexible JSON)
+    datos_materia: Optional[dict] = {}
 
 
 class ExpedienteCreate(ExpedienteBase):
@@ -106,6 +118,7 @@ class ExpedienteUpdate(BaseModel):
     sede_id: Optional[UUID] = None
     numero_causa: Optional[str] = None
     ramo: Optional[str] = None
+    tipo_proceso: Optional[str] = None
     materia_especifica: Optional[str] = None
     juzgado: Optional[str] = None
     juez: Optional[str] = None
@@ -116,10 +129,19 @@ class ExpedienteUpdate(BaseModel):
     fecha_cierre: Optional[date] = None
     abogado_responsable_id: Optional[UUID] = None
     cliente_principal_id: Optional[UUID] = None
+    co_abogados: Optional[list] = None
+    abogado_contraparte: Optional[str] = None
     prioridad: Optional[str] = None
     valor_estimado: Optional[Decimal] = None
     moneda: Optional[str] = None
     observaciones_ia: Optional[str] = None
+    tipo_resolucion: Optional[str] = None
+    numero_sentencia: Optional[str] = None
+    fecha_sentencia: Optional[date] = None
+    resultado_detalle: Optional[str] = None
+    monto_adjudicado: Optional[Decimal] = None
+    recurso_pendiente: Optional[bool] = None
+    datos_materia: Optional[dict] = None
 
 
 class ExpedienteResponse(ExpedienteBase):

@@ -12,6 +12,10 @@ from app.core.database import Base
 from app.models.tenant import *  # noqa
 from app.models.user import *  # noqa
 from app.models.audit import *  # noqa
+from app.models.case import *  # noqa
+from app.models.case_extended import *  # noqa
+from app.models.document import *  # noqa
+from app.models.ai import *  # noqa
 from sqlalchemy import engine_from_config, pool
 import os
 

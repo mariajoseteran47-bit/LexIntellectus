@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
 import { caseService } from '@/services/caseService';
 import { Expediente } from '@/types/case';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function EditCasePage() {
     const router = useRouter();
@@ -14,6 +15,7 @@ export default function EditCasePage() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const toast = useToast();
     const [formData, setFormData] = useState<Partial<Expediente>>({
         ramo: 'civil',
         prioridad: 'normal',
@@ -36,7 +38,7 @@ export default function EditCasePage() {
             setFormData(data);
         } catch (error) {
             console.error('Failed to load case', error);
-            alert('Error al cargar el expediente');
+            toast.error('Error', 'No se pudo cargar el expediente.');
         } finally {
             setLoading(false);
         }
@@ -55,10 +57,11 @@ export default function EditCasePage() {
             const { partes, created_at, updated_at, id: caseId, ...payload } = formData as any;
 
             await caseService.update(id, payload);
+            toast.success('Expediente actualizado', 'Los cambios se guardaron correctamente.');
             router.push(`/dashboard/cases/${id}`);
         } catch (error) {
             console.error('Failed to update case', error);
-            alert('Error al actualizar el expediente.');
+            toast.error('Error', 'No se pudo actualizar el expediente.');
         } finally {
             setSaving(false);
         }

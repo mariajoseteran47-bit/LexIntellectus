@@ -7,6 +7,7 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.rbac import require_permission
 from app.models.user import Usuario
 from app.models.case import Expediente, ParteProcesal, EstadoExpediente
 from app.schemas.case import (
@@ -24,7 +25,7 @@ async def list_cases(
     ramo: Optional[str] = None,
     estado_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("cases.read"))
 ):
     tenant_id = current_user.tenant_id
     skip = (page - 1) * size
@@ -35,7 +36,8 @@ async def list_cases(
         search_filter = or_(
             Expediente.numero_causa.ilike(f"%{search}%"),
             Expediente.numero_interno.ilike(f"%{search}%"),
-            Expediente.juzgado.ilike(f"%{search}%")
+            Expediente.juzgado.ilike(f"%{search}%"),
+            Expediente.resumen.ilike(f"%{search}%"),
         )
         query = query.where(search_filter)
     
@@ -69,7 +71,7 @@ async def list_cases(
 async def create_case(
     case_in: ExpedienteCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("cases.create"))
 ):
     tenant_id = current_user.tenant_id
     
@@ -107,7 +109,7 @@ async def create_case(
 async def get_case(
     case_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("cases.read"))
 ):
     tenant_id = current_user.tenant_id
     query = select(Expediente).where(
@@ -142,7 +144,7 @@ async def update_case(
     case_id: UUID,
     case_in: ExpedienteUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("cases.update"))
 ):
     tenant_id = current_user.tenant_id
     
@@ -177,7 +179,7 @@ async def add_party(
     case_id: UUID,
     parte_in: ParteCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("cases.create"))
 ):
     tenant_id = current_user.tenant_id
     
@@ -200,3 +202,86 @@ async def add_party(
     await db.commit()
     await db.refresh(new_parte)
     return new_parte
+
+
+@router.patch("/{case_id}/status")
+async def change_case_status(
+    case_id: UUID,
+    status_update: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_permission("cases.update"))
+):
+    """Change the status of a case (workflow transition)."""
+    tenant_id = current_user.tenant_id
+    
+    query = select(Expediente).where(
+        Expediente.id == case_id,
+        Expediente.tenant_id == tenant_id
+    )
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    
+    new_status_id = status_update.get("estado_id")
+    if not new_status_id:
+        raise HTTPException(status_code=400, detail="estado_id is required")
+    
+    # Verify the new status exists and belongs to tenant
+    status_query = select(EstadoExpediente).where(
+        EstadoExpediente.id == new_status_id,
+        EstadoExpediente.tenant_id == tenant_id
+    )
+    status_result = await db.execute(status_query)
+    new_status = status_result.scalar_one_or_none()
+    
+    if not new_status:
+        raise HTTPException(status_code=404, detail="Status not found")
+    
+    old_status_id = str(case.estado_id) if case.estado_id else None
+    case.estado_id = new_status.id
+    
+    # If marking as final status, set close date
+    if new_status.es_final and not case.fecha_cierre:
+        from datetime import date
+        case.fecha_cierre = date.today()
+    
+    await db.commit()
+    await db.refresh(case)
+    
+    return {
+        "id": str(case.id),
+        "estado_id": str(case.estado_id),
+        "estado_nombre": new_status.nombre,
+        "fecha_cierre": str(case.fecha_cierre) if case.fecha_cierre else None,
+        "message": f"Estado cambiado a '{new_status.nombre}'"
+    }
+
+
+@router.get("/statuses/list")
+async def list_case_statuses(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_permission("cases.read"))
+):
+    """List all available case statuses for the tenant."""
+    tenant_id = current_user.tenant_id
+    query = select(EstadoExpediente).where(
+        EstadoExpediente.tenant_id == tenant_id
+    ).order_by(EstadoExpediente.orden)
+    
+    result = await db.execute(query)
+    statuses = result.scalars().all()
+    
+    return [
+        {
+            "id": str(s.id),
+            "codigo": s.codigo,
+            "nombre": s.nombre,
+            "color_hex": s.color_hex,
+            "es_final": s.es_final,
+            "orden": s.orden,
+        }
+        for s in statuses
+    ]
+

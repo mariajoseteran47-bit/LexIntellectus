@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, User as UserIcon, MoreVertical, X, Shield, Briefcase } from 'lucide-react';
 import { userService, User, CreateUserDto } from '@/services/userService';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
@@ -11,6 +12,7 @@ export default function UsersPage() {
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const toast = useToast();
 
     // Form State
     const [formData, setFormData] = useState<CreateUserDto>({
@@ -62,10 +64,10 @@ export default function UsersPage() {
                 tipo_vinculo: 'indefinido',
             });
             fetchUsers();
-            alert('Usuario creado correctamente');
+            toast.success('Usuario creado', `${formData.nombre} ${formData.apellido} fue registrado exitosamente.`);
         } catch (error) {
             console.error('Failed to create user', error);
-            alert('Error al crear usuario. Verifique los datos.');
+            toast.error('Error al crear usuario', 'Verifique los datos e intente nuevamente.');
         } finally {
             setSubmitting(false);
         }

@@ -9,9 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent
+from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent, audit, case_timeline, reports
 from app.middleware.tenant import TenantMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
+from app.core.error_handlers import register_exception_handlers
 
 
 @asynccontextmanager
@@ -32,8 +33,49 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
+    description="""
+## LexIntellectus ERP — API Legal SaaS para Nicaragua
+
+Sistema integral de gestión jurídica con inteligencia artificial integrada.
+
+### Módulos principales:
+- **🏛️ Expedientes** — CRUD completo de casos judiciales
+- **⏰ Plazos Fatales** — Gestión de términos procesales con alertas
+- **📄 Documentos** — Almacenamiento seguro con validación
+- **🤖 Asistente IA** — 4 modos: Consultor, Estratega, Redactor, Notario
+- **👥 Usuarios** — Multi-tenant con RBAC
+- **🛡️ Auditoría** — Registro completo de acciones del sistema
+- **📊 Dashboard** — Estadísticas y reportes
+
+### Autenticación:
+Utiliza JWT Bearer Tokens. Obtén un token via `POST /auth/login`.
+    """,
+    contact={
+        "name": "LexIntellectus Team",
+        "email": "soporte@lexintellectus.com",
+    },
+    license_info={
+        "name": "Propietario",
+        "url": "https://lexintellectus.com/licencia",
+    },
+    openapi_tags=[
+        {"name": "Health", "description": "Verificación de conectividad del sistema"},
+        {"name": "Auth", "description": "Autenticación y gestión de tokens JWT"},
+        {"name": "Users", "description": "Gestión de usuarios del despacho"},
+        {"name": "Tenants", "description": "Gestión multi-tenant de despachos"},
+        {"name": "Cases", "description": "Expedientes judiciales — CRUD y workflow de estados"},
+        {"name": "Deadlines", "description": "Plazos fatales y términos procesales"},
+        {"name": "Documents", "description": "Gestión documental con almacenamiento MinIO"},
+        {"name": "Dashboard", "description": "Estadísticas y métricas del despacho"},
+        {"name": "Legal AI Agent", "description": "Asistente de inteligencia artificial legal"},
+        {"name": "Audit", "description": "Registro de auditoría de acciones del sistema"},
+        {"name": "Notifications", "description": "Sistema de notificaciones y alertas"},
+    ],
     lifespan=lifespan,
 )
+
+# === Error Handlers ===
+register_exception_handlers(app)
 
 # === Middleware ===
 app.add_middleware(
@@ -60,6 +102,9 @@ app.include_router(documents.router, prefix=api_prefix, tags=["Documents"])
 app.include_router(notifications.router, prefix=api_prefix, tags=["Notifications"])
 app.include_router(dashboard.router, prefix=api_prefix, tags=["Dashboard"])
 app.include_router(ai_agent.router, prefix=api_prefix, tags=["Legal AI Agent"])
+app.include_router(audit.router, prefix=api_prefix, tags=["Audit"])
+app.include_router(case_timeline.router, prefix=api_prefix, tags=["Case Timeline"])
+app.include_router(reports.router, prefix=api_prefix, tags=["Reports"])
 app.include_router(health.router, prefix=api_prefix)
 
 @app.get("/")

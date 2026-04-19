@@ -7,6 +7,7 @@ from datetime import date, timedelta
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.rbac import require_permission
 from app.models.user import Usuario
 from app.models.case import PlazoFatal, Expediente
 from app.schemas.deadline import DeadlineCreate, DeadlineUpdate, DeadlineResponse, DeadlineListResponse
@@ -23,7 +24,7 @@ async def list_deadlines(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("deadlines.read"))
 ):
     tenant_id = request.state.tenant_id
     skip = (page - 1) * size
@@ -70,7 +71,7 @@ async def create_deadline(
     request: Request,
     deadline_in: DeadlineCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("deadlines.read"))
 ):
     tenant_id = request.state.tenant_id
     
@@ -95,7 +96,7 @@ async def get_deadline(
     request: Request,
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("deadlines.read"))
 ):
     tenant_id = request.state.tenant_id
     
@@ -117,7 +118,7 @@ async def update_deadline(
     id: UUID,
     deadline_in: DeadlineUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("deadlines.read"))
 ):
     tenant_id = request.state.tenant_id
     
@@ -144,7 +145,7 @@ async def delete_deadline(
     request: Request,
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("deadlines.read"))
 ):
     tenant_id = request.state.tenant_id
     
