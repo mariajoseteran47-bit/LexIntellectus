@@ -107,6 +107,65 @@ class ClientProfileUpdate(BaseModel):
     kyc_verificado: Optional[bool] = None
 
 
+# === MiembroJuntaDirectiva ===
+
+class BoardMemberBase(BaseModel):
+    nombre_completo: str
+    cedula_identidad: Optional[str] = None
+    cargo: str  # presidente, vicepresidente, secretario, etc.
+    cargo_personalizado: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    fecha_nombramiento: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
+    numero_acta_nombramiento: Optional[str] = None
+    inscrita_registro_mercantil: bool = False
+    activo: bool = True
+
+
+class BoardMemberCreate(BoardMemberBase):
+    pass
+
+
+class BoardMemberResponse(BoardMemberBase):
+    id: UUID
+    client_profile_id: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# === Accionista ===
+
+class ShareholderBase(BaseModel):
+    tipo_accionista: Optional[str] = "natural"
+    nombre_completo: str
+    cedula_ruc: Optional[str] = None
+    nacionalidad: Optional[str] = "Nicaragüense"
+    numero_acciones: Optional[int] = None
+    porcentaje_participacion: Optional[float] = None
+    tipo_acciones: Optional[str] = None
+    valor_nominal: Optional[float] = None
+    es_beneficiario_final: bool = False
+    pep: bool = False
+    fecha_adquisicion: Optional[date] = None
+    activo: bool = True
+
+
+class ShareholderCreate(ShareholderBase):
+    pass
+
+
+class ShareholderResponse(ShareholderBase):
+    id: UUID
+    client_profile_id: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class ClientProfileResponse(ClientProfileBase):
     id: UUID
     user_id: UUID
@@ -114,6 +173,8 @@ class ClientProfileResponse(ClientProfileBase):
     kyc_verificado: bool = False
     pep: bool = False
     representantes: List[RepresentativeResponse] = []
+    junta_directiva: List[BoardMemberResponse] = []
+    accionistas: List[ShareholderResponse] = []
     created_at: datetime
 
     class Config:
@@ -125,3 +186,4 @@ class ClientProfileListResponse(BaseModel):
     total: int
     page: int
     size: int
+

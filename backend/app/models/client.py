@@ -95,6 +95,16 @@ class PerfilCliente(Base):
         back_populates="perfil_cliente",
         cascade="all, delete-orphan"
     )
+    junta_directiva = relationship(
+        "MiembroJuntaDirectiva",
+        back_populates="perfil_cliente",
+        cascade="all, delete-orphan"
+    )
+    accionistas = relationship(
+        "Accionista",
+        back_populates="perfil_cliente",
+        cascade="all, delete-orphan"
+    )
 
 
 class RepresentanteLegal(Base):
@@ -159,3 +169,85 @@ class RepresentanteLegal(Base):
     # Relationships
     perfil_cliente = relationship("PerfilCliente", back_populates="representantes")
     documento = relationship("Documento")
+
+
+class MiembroJuntaDirectiva(Base):
+    """
+    Miembros de la Junta Directiva de una persona jurídica.
+    Presidente, Vicepresidente, Secretario, Tesorero, Vocales, Fiscal, etc.
+    """
+    __tablename__ = "board_members"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_profile_id = Column(UUID(as_uuid=True), ForeignKey("client_profiles.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    nombre_completo = Column(String(300), nullable=False)
+    cedula_identidad = Column(String(50))
+    cargo = Column(
+        Enum(
+            'presidente', 'vicepresidente', 'secretario', 'tesorero',
+            'vocal', 'fiscal', 'director', 'director_suplente',
+            'comisario', 'otro',
+            name="board_position"
+        ),
+        nullable=False
+    )
+    cargo_personalizado = Column(String(200))      # Si es "otro"
+    telefono = Column(String(20))
+    email = Column(String(255))
+
+    # Período de la junta
+    fecha_nombramiento = Column(Date)
+    fecha_vencimiento = Column(Date)               # Fin del período
+    numero_acta_nombramiento = Column(String(100)) # Acta o escritura de elección
+    inscrita_registro_mercantil = Column(Boolean, default=False)
+
+    activo = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    perfil_cliente = relationship("PerfilCliente", back_populates="junta_directiva")
+
+
+class Accionista(Base):
+    """
+    Composición accionaria / participaciones de una persona jurídica.
+    Esencial para KYC, Ley 977 (Beneficiario Final) y conflictos de interés.
+    """
+    __tablename__ = "shareholders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_profile_id = Column(UUID(as_uuid=True), ForeignKey("client_profiles.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Puede ser persona natural o jurídica
+    tipo_accionista = Column(
+        Enum('natural', 'juridica', name="shareholder_type"),
+        default='natural'
+    )
+    nombre_completo = Column(String(300), nullable=False)  # Nombre o razón social
+    cedula_ruc = Column(String(50))                # Cédula o RUC
+    nacionalidad = Column(String(100), default="Nicaragüense")
+
+    # Participación
+    numero_acciones = Column(Integer)
+    porcentaje_participacion = Column(Numeric(5, 2))  # Ej: 51.00%
+    tipo_acciones = Column(String(100))               # Comunes, preferentes, etc.
+    valor_nominal = Column(Numeric(14, 2))            # Valor de cada acción
+
+    # Beneficiario final (Ley 977)
+    es_beneficiario_final = Column(Boolean, default=False)
+    pep = Column(Boolean, default=False)               # Persona Expuesta Políticamente
+
+    fecha_adquisicion = Column(Date)
+    activo = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    perfil_cliente = relationship("PerfilCliente", back_populates="accionistas")
+

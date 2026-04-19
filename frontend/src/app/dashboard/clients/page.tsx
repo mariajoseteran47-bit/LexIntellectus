@@ -27,11 +27,31 @@ interface ClientProfile {
     segmento: string;
     kyc_verificado: boolean;
     representantes: Representative[];
+    junta_directiva?: BoardMember[];
+    accionistas?: Shareholder[];
+}
+
+interface BoardMember {
+    id: string;
+    nombre_completo: string;
+    cargo: string;
+    numero_acta_nombramiento?: string;
+    activo: boolean;
+}
+
+interface Shareholder {
+    id: string;
+    tipo_accionista: string;
+    nombre_completo: string;
+    numero_acciones?: number;
+    porcentaje_participacion?: number;
+    es_beneficiario_final: boolean;
 }
 
 interface Representative {
     id: string;
     nombre_completo: string;
+    cedula_identidad?: string;
     tipo_poder: string;
     cargo?: string;
     numero_escritura?: string;
@@ -320,6 +340,7 @@ export default function ClientsPage() {
                                                                             {tipoPoderLabels[rep.tipo_poder] || rep.tipo_poder}
                                                                             {rep.cargo && ` · ${rep.cargo}`}
                                                                             {rep.numero_escritura && ` · Escritura N° ${rep.numero_escritura}`}
+                                                                            {rep.cedula_identidad && ` · Cédula: ${rep.cedula_identidad}`}
                                                                         </p>
                                                                     </div>
                                                                     <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${rep.vigente ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
@@ -334,6 +355,60 @@ export default function ClientsPage() {
                                                     <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg flex items-center gap-2">
                                                         <AlertTriangle className="w-4 h-4" /> Esta persona jurídica no tiene representantes legales registrados.
                                                     </p>
+                                                )}
+
+                                                {/* Junta Directiva */}
+                                                {isJuridica && profile.junta_directiva && profile.junta_directiva.length > 0 && (
+                                                    <div className="mt-4">
+                                                        <h4 className="text-sm font-bold text-surface-700 mb-3 flex items-center gap-2">
+                                                            <Users className="w-4 h-4 text-primary-500" /> Junta Directiva
+                                                        </h4>
+                                                        <div className="space-y-2">
+                                                            {profile.junta_directiva.map(miembro => (
+                                                                <div key={miembro.id} className="p-3 bg-white rounded-lg border border-surface-200 flex items-center justify-between">
+                                                                    <div>
+                                                                        <p className="font-semibold text-surface-800">{miembro.nombre_completo}</p>
+                                                                        <p className="text-xs text-surface-500 mt-0.5 capitalize">
+                                                                            {miembro.cargo}
+                                                                            {miembro.numero_acta_nombramiento && ` · Acta N° ${miembro.numero_acta_nombramiento}`}
+                                                                        </p>
+                                                                    </div>
+                                                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${miembro.activo ? 'text-green-600 bg-green-50' : 'text-surface-500 bg-surface-100'}`}>
+                                                                        {miembro.activo ? 'Activo' : 'Inactivo'}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Composición Accionaria */}
+                                                {isJuridica && profile.accionistas && profile.accionistas.length > 0 && (
+                                                    <div className="mt-4">
+                                                        <h4 className="text-sm font-bold text-surface-700 mb-3 flex items-center gap-2">
+                                                            <Building2 className="w-4 h-4 text-primary-500" /> Composición Accionaria
+                                                        </h4>
+                                                        <div className="space-y-2">
+                                                            {profile.accionistas.map(socio => (
+                                                                <div key={socio.id} className="p-3 bg-white rounded-lg border border-surface-200 flex items-center justify-between">
+                                                                    <div>
+                                                                        <p className="font-semibold text-surface-800 flex items-center gap-2">
+                                                                            {socio.nombre_completo}
+                                                                            {socio.es_beneficiario_final && (
+                                                                                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded" title="Beneficiario Final (Ley 977)">BF</span>
+                                                                            )}
+                                                                        </p>
+                                                                        <p className="text-xs text-surface-500 mt-0.5">
+                                                                            {socio.numero_acciones ? `${socio.numero_acciones} acciones` : `${socio.porcentaje_participacion}% participación`}
+                                                                        </p>
+                                                                    </div>
+                                                                    <span className="text-sm font-bold text-primary-600">
+                                                                        {socio.porcentaje_participacion ? `${socio.porcentaje_participacion}%` : ''}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 )}
 
                                                 {/* Documents Section */}
