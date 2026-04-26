@@ -527,4 +527,75 @@ Sprint 1 (Backend Multi-Servicio)
 
 ---
 
-**[Fin del Plan Estratégico Maestro v4.1]**
+# PARTE V — REGISTRO DE SESIONES Y CONTINUIDAD
+
+## Última Sesión: 2026-04-26
+
+### Sprints Completados en Esta Sesión
+
+| Sprint | Commit | Hash |
+|--------|--------|------|
+| Sprint 1 | `feat(sprint-1): Workflow CRUD API` | `e1c0b78` |
+| Sprint 2 | `feat(sprint-2): Universal frontend` | `96c6d89` |
+| Sprint 3 | `feat(sprint-3): Discussion threads + document approvals` | `fc22046` |
+| Sprint 4 | `feat(sprint-4): Workflow engine` | `be2bbba` |
+
+### Archivos Clave Creados/Modificados
+
+**Backend (nuevos):**
+- `backend/app/api/v1/workflows.py` — CRUD de etapas de workflow configurables
+- `backend/app/api/v1/collaboration.py` — Hilos de discusión + Aprobaciones de documentos
+- `backend/app/api/v1/workflow_engine.py` — Tareas, checklist, conflict check, transiciones
+- `backend/app/models/collaboration.py` — HiloDiscusion, MensajeHilo, AprobacionDocumento
+- `backend/app/models/workflow_engine.py` — PlantillaWorkflow, TareaExpediente, ChecklistDocumento, ConflictCheckResult
+- `backend/app/schemas/collaboration.py` — Schemas de hilos y aprobaciones
+- `backend/app/schemas/workflow_engine.py` — Schemas de tareas, plantillas, conflict check
+- `backend/alembic/versions/b2c3d4e5f6a7_sprint3_collaboration.py`
+- `backend/alembic/versions/c3d4e5f6a7b8_sprint4_workflow_engine.py`
+
+**Frontend (nuevos):**
+- `frontend/src/components/cases/DiscussionPanel.tsx` — Panel de chat/foro con hilos
+- `frontend/src/components/cases/ApprovalsPanel.tsx` — Panel de aprobaciones pendientes
+- `frontend/src/components/cases/TaskPanel.tsx` — Panel de tareas con progress bar
+- `frontend/src/components/cases/ConflictCheckAlert.tsx` — Verificación de conflicto de interés
+
+**Frontend (modificados):**
+- `frontend/src/app/dashboard/cases/new/page.tsx` — Wizard 4 pasos para todos los servicios + conflict check
+- `frontend/src/app/dashboard/cases/page.tsx` — Filtros y badges por tipo_servicio
+- `frontend/src/app/dashboard/cases/[id]/page.tsx` — Tabs: Tareas, Discusiones, Aprobaciones + service-aware
+- `frontend/src/components/cases/CaseStageToggle.tsx` — Soporte dual ramo/tipo_servicio
+- `frontend/src/services/caseService.ts` — getStages() con params object
+
+### Tablas de BD Creadas (por migración)
+
+| Migración | Tablas |
+|-----------|--------|
+| `a1b2c3d4e5f6` (pre-existente) | workflow_stages actualizado con tipo_servicio |
+| `b2c3d4e5f6a7` | case_threads, thread_messages, document_approvals |
+| `c3d4e5f6a7b8` | workflow_templates, case_tasks, case_doc_checklist, conflict_check_results + pg_trgm |
+
+### Estado Técnico al Cierre
+- ✅ Backend API: Uvicorn OK en Docker (`lexintellectus-api`)
+- ✅ Frontend Next.js: Compila sin errores (`lexintellectus-web`)
+- ✅ PostgreSQL: Todas las migraciones aplicadas
+- ✅ Git: Pushed a GitHub (`master` → `5b7207b`)
+
+---
+
+## 🔴 PRÓXIMO SPRINT: Sprint 5 — Time Tracking + Facturación
+
+**Objetivo:** Registrar tiempo dedicado y generar facturas.
+
+**Tareas pendientes (ver detalle más arriba):**
+1. Modelo `RegistroTiempo` (time_entries): usuario, caso, horas, tarifa, concepto, facturable
+2. Modelo `Factura` + `LineaFactura` (invoices, invoice_lines)
+3. Dashboard de horas por abogado/caso
+4. API CRUD de registros de tiempo
+5. API de generación de facturas desde time entries
+6. Frontend: Timer widget en detalle de caso
+7. Frontend: Panel de reportes de tiempo
+8. Frontend: Vista de facturación con generación de PDF
+
+---
+
+**[Fin del Plan Estratégico Maestro v4.2 — Actualizado 2026-04-26]**
