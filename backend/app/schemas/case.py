@@ -81,7 +81,8 @@ class EstadoResponse(EstadoBase):
 class ExpedienteBase(BaseModel):
     sede_id: Optional[UUID] = None
     numero_causa: Optional[str] = None
-    ramo: str # enum
+    tipo_servicio: str = "litigio"  # litigio, escritura, asesoria, tramite, consulta, mediacion, contrato, due_diligence, propiedad_intelectual, gestion_corporativa
+    ramo: Optional[str] = None  # Only required for litigio
     tipo_proceso: Optional[str] = None  # ordinario, ejecutivo, etc.
     materia_especifica: Optional[str] = None
     juzgado: Optional[str] = None
@@ -117,6 +118,7 @@ class ExpedienteCreate(ExpedienteBase):
 class ExpedienteUpdate(BaseModel):
     sede_id: Optional[UUID] = None
     numero_causa: Optional[str] = None
+    tipo_servicio: Optional[str] = None
     ramo: Optional[str] = None
     tipo_proceso: Optional[str] = None
     materia_especifica: Optional[str] = None
@@ -148,6 +150,7 @@ class ExpedienteResponse(ExpedienteBase):
     id: UUID
     tenant_id: UUID
     numero_interno: Optional[str] = None
+    tipo_servicio: Optional[str] = "litigio"
     created_at: datetime
     updated_at: datetime
     partes: List[ParteResponse] = []

@@ -25,6 +25,7 @@ async def list_cases(
     size: int = Query(10, ge=1, le=100),
     search: Optional[str] = None,
     ramo: Optional[str] = None,
+    tipo_servicio: Optional[str] = None,
     estado_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(require_permission("cases.read"))
@@ -45,6 +46,9 @@ async def list_cases(
     
     if ramo:
         query = query.where(Expediente.ramo == ramo)
+    
+    if tipo_servicio:
+        query = query.where(Expediente.tipo_servicio == tipo_servicio)
     
     if estado_id:
         query = query.where(Expediente.estado_id == estado_id)
@@ -401,15 +405,25 @@ async def get_case_statuses(
 
 @router.get("/workflow/stages")
 async def list_workflow_stages(
-    ramo: str,
+    ramo: Optional[str] = None,
+    tipo_servicio: Optional[str] = None,
     tipo_proceso: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(require_permission("cases.read"))
 ):
-    """Listar etapas procesales específicas para un ramo y tipo de juicio."""
+    """Listar etapas procesales específicas para un ramo, tipo de servicio, y/o tipo de proceso."""
     from app.models.case_extended import EtapaProcesal
     
-    query = select(EtapaProcesal).where(EtapaProcesal.ramo == ramo)
+    query = select(EtapaProcesal)
+    
+    # For litigation: filter by ramo (and optionally tipo_proceso)
+    if ramo:
+        query = query.where(EtapaProcesal.ramo == ramo)
+    
+    # For non-litigation services: filter by tipo_servicio
+    if tipo_servicio:
+        query = query.where(EtapaProcesal.tipo_servicio == tipo_servicio)
+    
     if tipo_proceso:
         query = query.where(EtapaProcesal.tipo_proceso == tipo_proceso)
     

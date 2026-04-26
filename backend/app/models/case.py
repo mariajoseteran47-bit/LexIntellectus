@@ -45,12 +45,16 @@ class Expediente(Base):
     # === TIPO DE SERVICIO LEGAL ===
     tipo_servicio = Column(
         Enum(
-            'litigio',      # Caso judicial (comportamiento clásico)
-            'escritura',    # Protocolo notarial
-            'asesoria',     # Asesoría / retainer continuo
-            'tramite',      # Trámite administrativo / registral
-            'consulta',     # Consulta puntual / opinión legal
-            'mediacion',    # Mediación / arbitraje
+            'litigio',                # Caso judicial (comportamiento clásico)
+            'escritura',              # Protocolo notarial
+            'asesoria',               # Asesoría / retainer continuo
+            'tramite',                # Trámite administrativo / registral
+            'consulta',               # Consulta puntual / opinión legal
+            'mediacion',              # Mediación / arbitraje
+            'contrato',               # Administración de contratos
+            'due_diligence',          # Auditoría legal / DD
+            'propiedad_intelectual',  # Marcas, patentes, derechos de autor
+            'gestion_corporativa',    # Mantenimiento societario
             name="service_type"
         ),
         nullable=False,
@@ -142,9 +146,21 @@ class ParteProcesal(Base):
     
     rol_procesal = Column(
         Enum(
+            # === LITIGIO ===
             'demandante', 'demandado', 'tercero_interesado',
             'tercero_excluyente', 'ministerio_publico', 'procuraduria',
             'testigo', 'perito', 'abogado_contraparte',
+            # === NOTARIAL ===
+            'otorgante', 'adquiriente', 'compareciente',
+            'testigo_instrumental', 'interprete',
+            # === CONTRATOS / MEDIACIÓN ===
+            'parte_a', 'parte_b', 'mediador', 'arbitro', 'garante',
+            # === TRÁMITES ===
+            'solicitante', 'beneficiario', 'gestor',
+            # === CORPORATIVO ===
+            'sociedad', 'socio_fundador', 'representante',
+            # === UNIVERSAL ===
+            'cliente', 'contraparte', 'otro',
             name="procedural_role"
         ),
         nullable=False
@@ -173,7 +189,11 @@ class PlazoFatal(Base):
     
     descripcion = Column(String(255), nullable=False)
     tipo_plazo = Column(
-        Enum('procesal', 'contractual', 'administrativo', name="deadline_type"),
+        Enum(
+            'procesal', 'contractual', 'administrativo',
+            'registral', 'notarial', 'institucional',
+            name="deadline_type"
+        ),
         default='procesal'
     )
     fecha_inicio = Column(Date)

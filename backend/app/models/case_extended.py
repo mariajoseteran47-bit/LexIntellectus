@@ -33,7 +33,17 @@ class EtapaProcesal(Base):
             'constitucional', 'sucesiones', 'administrativo', 'notarial',
             name="workflow_branch"
         ),
-        nullable=False
+        nullable=True  # Now nullable: non-litigation services use tipo_servicio instead
+    )
+    # === TIPO DE SERVICIO (for non-litigation workflows) ===
+    tipo_servicio = Column(
+        Enum(
+            'litigio', 'escritura', 'asesoria', 'tramite', 'consulta',
+            'mediacion', 'contrato', 'due_diligence',
+            'propiedad_intelectual', 'gestion_corporativa',
+            name="workflow_service_type"
+        ),
+        nullable=True  # If set, overrides ramo for workflow lookup
     )
     tipo_proceso = Column(String(100))  # ordinario, ejecutivo, divorcio_contencioso...
     codigo = Column(String(50), nullable=False)
@@ -64,6 +74,7 @@ class ActuacionProcesal(Base):
     # Clasificación
     tipo = Column(
         Enum(
+            # === LITIGIO (originales) ===
             'escrito_presentado',      # Escrito que NOSOTROS presentamos
             'escrito_contraparte',     # Escrito de la contraparte
             'providencia',             # Resolución del juez (no sentencia)
@@ -82,6 +93,31 @@ class ActuacionProcesal(Base):
             'acuerdo',                 # Conciliación, mediación, transacción
             'peritaje',                # Dictamen pericial
             'nota_interna',            # Nota del equipo (no procesal)
+            # === NOTARIAL ===
+            'redaccion_borrador',      # Borrador de escritura redactado
+            'revision_cliente',        # Borrador enviado al cliente para revisión
+            'firma_escritura',         # Escritura firmada y autorizada
+            'presentacion_registro',   # Presentada ante Registro Público
+            'inscripcion_completada',  # Inscripción registral completada
+            # === CONTRATOS ===
+            'redaccion_contrato',      # Borrador de contrato
+            'revision_contraparte',    # Enviado a contraparte para revisión
+            'negociacion',             # Ronda de negociación
+            'firma_contrato',          # Contrato firmado
+            'addendum',                # Addendum o modificación
+            'renovacion',              # Renovación de contrato
+            'terminacion',             # Terminación de contrato
+            # === TRÁMITES ADMINISTRATIVOS ===
+            'presentacion_solicitud',  # Solicitud presentada ante institución
+            'requerimiento_institucion', # Requerimiento de la institución
+            'subsanacion',             # Subsanación de documentos
+            'resolucion_administrativa', # Resolución de la institución
+            # === CORPORATIVO ===
+            'convocatoria',            # Convocatoria a asamblea/junta
+            'asamblea_realizada',      # Asamblea o junta celebrada
+            'acta_protocolizada',      # Acta protocolizada ante notario
+            'inscripcion_registral',   # Inscripción en Registro Mercantil
+            # === UNIVERSAL ===
             'otro',
             name="event_type"
         ),
