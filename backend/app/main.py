@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent, audit, case_timeline, reports, client_profiles, professional_profiles, evidences, client_documents, workflows
+from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent, audit, case_timeline, reports, client_profiles, professional_profiles, evidences, client_documents, workflows, collaboration
 from app.middleware.tenant import TenantMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
 from app.core.error_handlers import register_exception_handlers
@@ -110,6 +110,7 @@ app.include_router(professional_profiles.router, prefix=api_prefix, tags=["Profe
 app.include_router(evidences.router, prefix=api_prefix, tags=["Evidence Management"])
 app.include_router(client_documents.router, prefix=api_prefix, tags=["Client Documents"])
 app.include_router(workflows.router, prefix=api_prefix, tags=["Workflow Administration"])
+app.include_router(collaboration.router, prefix=api_prefix, tags=["Collaboration"])
 app.include_router(health.router, prefix=api_prefix)
 
 @app.get("/")

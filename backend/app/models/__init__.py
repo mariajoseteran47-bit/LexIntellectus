@@ -10,3 +10,4 @@ from .professional import PerfilProfesional
 from .client import PerfilCliente, RepresentanteLegal, MiembroJuntaDirectiva, Accionista
 from .evidence import Prueba, PruebaDocumento
 from .client_document import DocumentoCliente
+from .collaboration import HiloDiscusion, MensajeHilo, AprobacionDocumento

@@ -18,6 +18,8 @@ import CaseTheoryAnalysis from '@/components/cases/CaseTheoryAnalysis';
 import CaseStatusToggle from '@/components/cases/CaseStatusToggle';
 import CaseStageToggle from '@/components/cases/CaseStageToggle';
 import WorkflowProgressBar from '@/components/cases/WorkflowProgressBar';
+import DiscussionPanel from '@/components/cases/DiscussionPanel';
+import ApprovalsPanel from '@/components/cases/ApprovalsPanel';
 import api from '@/lib/api';
 
 // === CONSTANTES POR MATERIA ===
@@ -215,7 +217,9 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         { id: 'partes', label: 'Partes', icon: Users, count: caseData.partes?.length || 0 },
         { id: 'plazos', label: 'Plazos', icon: Clock },
         { id: 'documentos', label: 'Documentos', icon: FileText },
-        { id: 'notas', label: 'Bóveda de Discusión', icon: MessageSquare, count: notas.length },
+        { id: 'discusiones', label: 'Discusiones', icon: MessageSquare },
+        { id: 'aprobaciones', label: 'Aprobaciones', icon: CheckCircle },
+        { id: 'notas', label: 'Notas Internas', icon: StickyNote, count: notas.length },
         { id: 'teoria', label: 'Teoría del Caso', icon: Target },
         { id: 'ia', label: 'IA', icon: Lightbulb, badge: 'LAA' },
     ];
@@ -770,6 +774,8 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
                 {activeTab === 'plazos' && <DeadlineList caseId={caseData.id} />}
                 {activeTab === 'documentos' && <DocumentList caseId={caseData.id} />}
+                {activeTab === 'discusiones' && <DiscussionPanel caseId={caseData.id} />}
+                {activeTab === 'aprobaciones' && <ApprovalsPanel />}
                 {activeTab === 'ia' && <CaseTheoryAnalysis caseId={caseData.id} />}
             </div>
         </div>
