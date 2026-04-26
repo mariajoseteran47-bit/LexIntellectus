@@ -199,7 +199,7 @@ El sistema DEBE soportar TODOS como ciudadanos de primera clase.
 
 | Sprint | Descripción | Estado |
 |--------|-------------|:------:|
-| Sprint 1 | Backend Multi-Servicio | 🔴 Pendiente |
+| Sprint 1 | Backend Multi-Servicio | ✅ Completado |
 | Sprint 2 | Frontend Universal | 🔴 Pendiente |
 | Sprint 3 | Hilos de Discusión + Aprobaciones | 🔴 Pendiente |
 | Sprint 4 | Workflow Inteligente + Conflict Check | 🔴 Pendiente |
