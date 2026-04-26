@@ -6,6 +6,7 @@ export interface CaseFilterParams {
     size?: number;
     search?: string;
     ramo?: string;
+    tipo_servicio?: string;
     estado_id?: string;
 }
 
@@ -52,11 +53,9 @@ export const caseService = {
         return data;
     },
 
-    // Get workflow stages by ramo and process type
-    async getStages(ramo: string, tipoProceso?: string): Promise<WorkflowStage[]> {
-        const { data } = await api.get<WorkflowStage[]>('/cases/workflow/stages', { 
-            params: { ramo, tipo_proceso: tipoProceso } 
-        });
+    // Get workflow stages by ramo, tipo_servicio, or process type
+    async getStages(params: { ramo?: string; tipo_servicio?: string; tipo_proceso?: string }): Promise<WorkflowStage[]> {
+        const { data } = await api.get<WorkflowStage[]>('/cases/workflow/stages', { params });
         return data;
     },
 

@@ -8,13 +8,14 @@ import { useToast } from '@/components/ui/ToastProvider';
 
 interface CaseStageToggleProps {
     caseId: string;
-    ramo: string;
+    ramo?: string;
+    tipoServicio?: string;
     tipoProceso?: string;
     currentStageId?: string;
     onStageChange: (newStageId: string) => void;
 }
 
-export default function CaseStageToggle({ caseId, ramo, tipoProceso, currentStageId, onStageChange }: CaseStageToggleProps) {
+export default function CaseStageToggle({ caseId, ramo, tipoServicio, tipoProceso, currentStageId, onStageChange }: CaseStageToggleProps) {
     const [stages, setStages] = useState<WorkflowStage[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -24,9 +25,16 @@ export default function CaseStageToggle({ caseId, ramo, tipoProceso, currentStag
     useEffect(() => {
         const fetchStages = async () => {
             try {
-                // Normalizar ramo para la búsqueda
-                const cleanRamo = ramo?.toLowerCase().trim();
-                const data = await caseService.getStages(cleanRamo, tipoProceso);
+                // For litigation: lookup by ramo. For everything else: lookup by tipo_servicio
+                const params: { ramo?: string; tipo_servicio?: string; tipo_proceso?: string } = {};
+                if (tipoServicio && tipoServicio !== 'litigio') {
+                    params.tipo_servicio = tipoServicio;
+                } else if (ramo) {
+                    params.ramo = ramo.toLowerCase().trim();
+                }
+                if (tipoProceso) params.tipo_proceso = tipoProceso;
+                
+                const data = await caseService.getStages(params);
                 setStages(data);
             } catch (error) {
                 console.error('Failed to fetch stages', error);
@@ -34,8 +42,8 @@ export default function CaseStageToggle({ caseId, ramo, tipoProceso, currentStag
                 setFetching(false);
             }
         };
-        if (ramo) fetchStages();
-    }, [ramo, tipoProceso]);
+        if (ramo || tipoServicio) fetchStages();
+    }, [ramo, tipoServicio, tipoProceso]);
 
     const currentStage = stages.find(s => s.id === currentStageId);
 
@@ -85,7 +93,9 @@ export default function CaseStageToggle({ caseId, ramo, tipoProceso, currentStag
                     <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)}></div>
                     <div className="absolute right-0 lg:left-0 mt-2 w-80 bg-white border border-surface-200 rounded-2xl shadow-2xl z-40 py-2.5 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="px-4 py-2 mb-1 border-b border-surface-50 flex items-center justify-between">
-                            <span className="text-[10px] font-black text-primary-400 uppercase tracking-widest">Procedimiento {ramo?.toUpperCase()}</span>
+                            <span className="text-[10px] font-black text-primary-400 uppercase tracking-widest">
+                                {tipoServicio && tipoServicio !== 'litigio' ? tipoServicio.replace('_', ' ').toUpperCase() : `Procedimiento ${ramo?.toUpperCase() || ''}`}
+                            </span>
                             {tipoProceso && <span className="text-[9px] bg-primary-100 text-primary-600 px-1.5 py-0.5 rounded font-bold capitalize">{tipoProceso}</span>}
                         </div>
                         <div className="max-h-[400px] overflow-y-auto custom-scrollbar">

@@ -10,7 +10,7 @@ import {
     MessageSquare, Target, Lightbulb
 } from 'lucide-react';
 import { caseService } from '@/services/caseService';
-import { Expediente } from '@/types/case';
+import { Expediente, TIPOS_SERVICIO } from '@/types/case';
 import { useToast } from '@/components/ui/ToastProvider';
 import DeadlineList from '@/components/deadlines/DeadlineList';
 import DocumentList from '@/components/documents/DocumentList';
@@ -120,10 +120,14 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     }, [params.id]);
 
     useEffect(() => {
-        if (caseData?.ramo && caseData?.tipo_proceso) {
-            loadStages(caseData.ramo, caseData.tipo_proceso);
+        if (caseData) {
+            if (caseData.tipo_servicio && caseData.tipo_servicio !== 'litigio') {
+                loadStages(undefined, caseData.tipo_servicio, caseData.tipo_proceso);
+            } else if (caseData.ramo) {
+                loadStages(caseData.ramo, undefined, caseData.tipo_proceso);
+            }
         }
-    }, [caseData?.ramo, caseData?.tipo_proceso]);
+    }, [caseData?.ramo, caseData?.tipo_servicio, caseData?.tipo_proceso]);
 
     useEffect(() => {
         if (caseData) {
@@ -153,10 +157,14 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         finally { setLoadingTimeline(false); }
     };
 
-    const loadStages = async (ramo: string, tipo_proceso: string) => {
+    const loadStages = async (ramo?: string, tipo_servicio?: string, tipo_proceso?: string) => {
         setLoadingStages(true);
         try {
-            const { data } = await api.get(`/cases/workflow/stages?ramo=${ramo}&tipo_proceso=${tipo_proceso}`);
+            const params = new URLSearchParams();
+            if (ramo) params.append('ramo', ramo);
+            if (tipo_servicio) params.append('tipo_servicio', tipo_servicio);
+            if (tipo_proceso) params.append('tipo_proceso', tipo_proceso);
+            const { data } = await api.get(`/cases/workflow/stages?${params.toString()}`);
             setStages(data || []);
         } catch (e) { console.error('Error loading stages', e); }
         finally { setLoadingStages(false); }
@@ -197,8 +205,9 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     if (loading) return <div className="p-8 text-center">Cargando expediente...</div>;
     if (!caseData) return <div className="p-8 text-center">Expediente no encontrado</div>;
 
-    const ramoLabel = RAMO_LABELS[caseData.ramo] || caseData.ramo;
-    const ramoColor = RAMO_COLORS[caseData.ramo] || 'bg-gray-100 text-gray-700';
+    const svcConfig = TIPOS_SERVICIO.find(s => s.value === caseData.tipo_servicio);
+    const ramoLabel = svcConfig ? svcConfig.label : (RAMO_LABELS[caseData.ramo || ''] || caseData.ramo || caseData.tipo_servicio);
+    const ramoColor = svcConfig ? svcConfig.color : (RAMO_COLORS[caseData.ramo || ''] || 'bg-gray-100 text-gray-700');
 
     const tabs = [
         { id: 'timeline', label: 'Timeline', icon: History, count: actuaciones.length },
@@ -223,9 +232,9 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
                             <h1 className="text-2xl font-bold text-surface-900">{caseData.numero_interno || 'Sin Número'}</h1>
-                            {/* Ramo badge */}
+                            {/* Service type badge */}
                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${ramoColor}`}>
-                                {ramoLabel}
+                                {svcConfig ? `${svcConfig.icon} ${ramoLabel}` : ramoLabel}
                             </span>
                             {/* Prioridad badge */}
                             <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${
@@ -241,11 +250,12 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                             <CaseStageToggle 
                                 caseId={caseData.id}
                                 ramo={caseData.ramo}
+                                tipoServicio={caseData.tipo_servicio}
                                 tipoProceso={caseData.tipo_proceso}
                                 currentStageId={caseData.etapa_actual_id}
                                 onStageChange={(newId) => {
                                     setCaseData({...caseData, etapa_actual_id: newId});
-                                    loadTimeline(); // Refrescar timeline con el evento automático
+                                    loadTimeline();
                                 }}
                             />
 

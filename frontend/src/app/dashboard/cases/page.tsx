@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Filter, FileText, Calendar, MoreVertical, Briefcase } from 'lucide-react';
 import { caseService } from '@/services/caseService';
-import { Expediente } from '@/types/case';
+import { Expediente, TIPOS_SERVICIO } from '@/types/case';
 
 export default function CasesPage() {
     const [cases, setCases] = useState<Expediente[]>([]);
@@ -13,7 +13,7 @@ export default function CasesPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [ramo, setRamo] = useState('');
-    // const [estado, setEstado] = useState(''); // TODO: Fetch statuses
+    const [tipoServicio, setTipoServicio] = useState('');
 
     const fetchCases = async () => {
         setLoading(true);
@@ -23,6 +23,7 @@ export default function CasesPage() {
                 size: 10,
                 search: search || undefined,
                 ramo: ramo || undefined,
+                tipo_servicio: tipoServicio || undefined,
             });
             setCases(data.items);
             setTotal(data.total);
@@ -39,7 +40,7 @@ export default function CasesPage() {
             fetchCases();
         }, 300);
         return () => clearTimeout(timer);
-    }, [page, search, ramo]);
+    }, [page, search, ramo, tipoServicio]);
 
     const ramoOptions = [
         { value: '', label: 'Todos los Ramos' },
@@ -55,12 +56,12 @@ export default function CasesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-surface-900">Expedientes</h1>
-                    <p className="text-surface-500 text-sm mt-1">Gestiona tus casos legales y procesos judiciales</p>
+                    <h1 className="text-2xl font-bold text-surface-900">Asuntos Legales</h1>
+                    <p className="text-surface-500 text-sm mt-1">Gestión integral de todos tus servicios legales</p>
                 </div>
                 <Link href="/dashboard/cases/new" className="btn btn-primary flex items-center gap-2">
                     <Plus className="w-4 h-4" />
-                    Nuevo Expediente
+                    Nuevo Asunto
                 </Link>
             </div>
 
@@ -77,17 +78,30 @@ export default function CasesPage() {
                     />
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Briefcase className="w-4 h-4 text-surface-500" />
                     <select
                         className="input w-full sm:w-48"
-                        value={ramo}
-                        onChange={(e) => setRamo(e.target.value)}
+                        value={tipoServicio}
+                        onChange={(e) => { setTipoServicio(e.target.value); setRamo(''); }}
                     >
-                        {ramoOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option value="">Todos los Servicios</option>
+                        {TIPOS_SERVICIO.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.icon} {opt.label}</option>
                         ))}
                     </select>
                 </div>
+                {(tipoServicio === 'litigio' || tipoServicio === '') && (
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <select
+                            className="input w-full sm:w-40"
+                            value={ramo}
+                            onChange={(e) => setRamo(e.target.value)}
+                        >
+                            {ramoOptions.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {/* Table */}
@@ -134,9 +148,18 @@ export default function CasesPage() {
                                             <div className="text-surface-900 font-medium truncate max-w-xs" title={c.resumen || ''}>
                                                 {c.resumen ? (c.resumen.length > 40 ? c.resumen.substring(0, 40) + '...' : c.resumen) : 'Sin carátula'}
                                             </div>
-                                            <div className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-600 capitalize">
-                                                {c.ramo}
-                                            </div>
+                                            {(() => {
+                                                const svc = TIPOS_SERVICIO.find(s => s.value === c.tipo_servicio);
+                                                return svc ? (
+                                                    <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-xs font-medium ${svc.color}`}>
+                                                        {svc.icon} {svc.label}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-600 capitalize">
+                                                        {c.ramo || c.tipo_servicio}
+                                                    </span>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-surface-700">{c.materia_especifica || 'General'}</div>
