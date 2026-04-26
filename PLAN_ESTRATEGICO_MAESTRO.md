@@ -201,7 +201,7 @@ El sistema DEBE soportar TODOS como ciudadanos de primera clase.
 |--------|-------------|:------:|
 | Sprint 1 | Backend Multi-Servicio | ✅ Completado |
 | Sprint 2 | Frontend Universal | ✅ Completado |
-| Sprint 3 | Hilos de Discusión + Aprobaciones | 🔴 Pendiente |
+| Sprint 3 | Hilos de Discusión + Aprobaciones | ✅ Completado |
 | Sprint 4 | Workflow Inteligente + Conflict Check | 🔴 Pendiente |
 | Sprint 5 | Time Tracking + Facturación | 🔴 Pendiente |
 | Sprint 6 | API Pública + Webhooks | 🔴 Pendiente |
