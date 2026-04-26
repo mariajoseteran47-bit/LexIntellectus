@@ -7,7 +7,7 @@ import {
     ArrowLeft, Clock, Users, FileText, Activity, Plus, MoreVertical,
     Edit2, History, StickyNote, Scale, BookOpen, AlertCircle, CheckCircle,
     Send, Shield, Gavel, Calendar, MapPin, User, ChevronRight, Flag,
-    MessageSquare, Target, Lightbulb
+    MessageSquare, Target, Lightbulb, ListChecks
 } from 'lucide-react';
 import { caseService } from '@/services/caseService';
 import { Expediente, TIPOS_SERVICIO } from '@/types/case';
@@ -20,6 +20,7 @@ import CaseStageToggle from '@/components/cases/CaseStageToggle';
 import WorkflowProgressBar from '@/components/cases/WorkflowProgressBar';
 import DiscussionPanel from '@/components/cases/DiscussionPanel';
 import ApprovalsPanel from '@/components/cases/ApprovalsPanel';
+import TaskPanel from '@/components/cases/TaskPanel';
 import api from '@/lib/api';
 
 // === CONSTANTES POR MATERIA ===
@@ -215,6 +216,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         { id: 'timeline', label: 'Timeline', icon: History, count: actuaciones.length },
         { id: 'general', label: 'Información', icon: BookOpen },
         { id: 'partes', label: 'Partes', icon: Users, count: caseData.partes?.length || 0 },
+        { id: 'tareas', label: 'Tareas', icon: ListChecks },
         { id: 'plazos', label: 'Plazos', icon: Clock },
         { id: 'documentos', label: 'Documentos', icon: FileText },
         { id: 'discusiones', label: 'Discusiones', icon: MessageSquare },
@@ -772,6 +774,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                     </div>
                 )}
 
+                {activeTab === 'tareas' && <TaskPanel caseId={caseData.id} />}
                 {activeTab === 'plazos' && <DeadlineList caseId={caseData.id} />}
                 {activeTab === 'documentos' && <DocumentList caseId={caseData.id} />}
                 {activeTab === 'discusiones' && <DiscussionPanel caseId={caseData.id} />}

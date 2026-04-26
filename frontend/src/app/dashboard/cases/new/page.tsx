@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ParteProcesal, TipoServicio, TIPOS_SERVICIO, ROLES_POR_SERVICIO, Expediente } from '@/types/case';
 import { useToast } from '@/components/ui/ToastProvider';
+import ConflictCheckAlert from '@/components/cases/ConflictCheckAlert';
 import api from '@/lib/api';
 
 // ═══════════════════════════════════════════════════════════════
@@ -627,7 +628,11 @@ export default function NewCasePage() {
                             </button>
                         </div>
 
-                        <div className="p-4 space-y-3 bg-surface-50">
+                        <div className="p-4 space-y-4 bg-surface-50">
+                            {/* Conflict Check */}
+                            <ConflictCheckAlert />
+
+                            <div className="space-y-3">
                             {partes.map((parte, index) => {
                                 const isExpanded = expandedParte === index;
                                 const availableRoles = ROLES_POR_SERVICIO[formData.tipo_servicio as TipoServicio] || [];
@@ -704,6 +709,7 @@ export default function NewCasePage() {
                                     </div>
                                 );
                             })}
+                            </div>
                         </div>
                     </div>
                 )}
