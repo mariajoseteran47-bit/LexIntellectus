@@ -85,6 +85,12 @@ class PerfilCliente(Base):
     pep = Column(Boolean, default=False)          # Persona Expuesta Políticamente
     pep_detalle = Column(Text)
 
+    # === PARAMETROS DE FACTURACION (Sprint 5) ===
+    es_exento_iva = Column(Boolean, default=False, nullable=False)
+    aplica_retenciones = Column(Boolean, default=False, nullable=False)
+    dias_credito_predeterminado = Column(Integer, default=0, nullable=False)  # 0 = Contado
+    tasa_interes_moratorio_predeterminada = Column(Numeric(5, 2), default=0.00, nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -42,8 +42,10 @@ class RAGEngine:
     async def search_context(self, query_text: str, limit: int = 5) -> List[LegalChunk]:
         query_embedding = await self.get_embedding(query_text)
         
-        # PGVector search
-        stmt = select(LegalChunk).order_by(
+        # PGVector search, filtering out derogado chunks
+        stmt = select(LegalChunk).filter(
+            LegalChunk.estado_vigencia != 'derogado'
+        ).order_by(
             LegalChunk.vector_embedding.l2_distance(query_embedding)
         ).limit(limit)
         
@@ -60,9 +62,13 @@ class RAGEngine:
         chunks = []
         context_str = ""
         
-        if session.modo == 'consultor':
+        if session.modo in ['consultor', 'redactor', 'cartulario']:
             chunks = await self.search_context(user_message)
-            context_str = "\n\n".join([f"Fuente: {c.source_type} - {c.hash_contenido[:8]}:\n{c.contenido_texto}" for c in chunks])
+            context_list = []
+            for c in chunks:
+                prefix = "[¡ATENCIÓN! Esta ley ha sido reformada, verifica la versión actual] " if c.estado_vigencia == 'reformado' else ""
+                context_list.append(f"Fuente: {c.source_type} - {c.hash_contenido[:8]}:\n{prefix}{c.contenido_texto}")
+            context_str = "\n\n".join(context_list)
         
         # 2. Build System Prompt
         system_prompt = PromptLibrary.get_prompt(session.modo, context_str, case_context)

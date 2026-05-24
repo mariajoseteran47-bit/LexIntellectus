@@ -7,7 +7,7 @@ import {
     ArrowLeft, Clock, Users, FileText, Activity, Plus, MoreVertical,
     Edit2, History, StickyNote, Scale, BookOpen, AlertCircle, CheckCircle,
     Send, Shield, Gavel, Calendar, MapPin, User, ChevronRight, Flag,
-    MessageSquare, Target, Lightbulb, ListChecks
+    MessageSquare, Target, Lightbulb, ListChecks, DollarSign
 } from 'lucide-react';
 import { caseService } from '@/services/caseService';
 import { Expediente, TIPOS_SERVICIO } from '@/types/case';
@@ -15,12 +15,14 @@ import { useToast } from '@/components/ui/ToastProvider';
 import DeadlineList from '@/components/deadlines/DeadlineList';
 import DocumentList from '@/components/documents/DocumentList';
 import CaseTheoryAnalysis from '@/components/cases/CaseTheoryAnalysis';
+import { AIDocumentDrafter } from '@/components/cases/AIDocumentDrafter';
 import CaseStatusToggle from '@/components/cases/CaseStatusToggle';
 import CaseStageToggle from '@/components/cases/CaseStageToggle';
 import WorkflowProgressBar from '@/components/cases/WorkflowProgressBar';
 import DiscussionPanel from '@/components/cases/DiscussionPanel';
 import ApprovalsPanel from '@/components/cases/ApprovalsPanel';
 import TaskPanel from '@/components/cases/TaskPanel';
+import BillingPanel from '@/components/cases/BillingPanel';
 import api from '@/lib/api';
 
 // === CONSTANTES POR MATERIA ===
@@ -223,6 +225,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         { id: 'aprobaciones', label: 'Aprobaciones', icon: CheckCircle },
         { id: 'notas', label: 'Notas Internas', icon: StickyNote, count: notas.length },
         { id: 'teoria', label: 'Teoría del Caso', icon: Target },
+        { id: 'facturacion', label: 'Facturación', icon: DollarSign },
         { id: 'ia', label: 'IA', icon: Lightbulb, badge: 'LAA' },
     ];
 
@@ -724,7 +727,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
                 {/* ====== TEORÍA DEL CASO ====== */}
                 {activeTab === 'teoria' && (
-                    <CaseTheoryTab caseId={params.id} ramo={caseData.ramo} />
+                    <CaseTheoryTab caseId={params.id} ramo={caseData.ramo || ''} />
                 )}
 
                 {/* ====== PARTES (existente, mejorado) ====== */}
@@ -776,9 +779,15 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
                 {activeTab === 'tareas' && <TaskPanel caseId={caseData.id} />}
                 {activeTab === 'plazos' && <DeadlineList caseId={caseData.id} />}
-                {activeTab === 'documentos' && <DocumentList caseId={caseData.id} />}
+                {activeTab === 'documentos' && (
+                    <div className="space-y-6">
+                        <AIDocumentDrafter caseId={caseData.id} />
+                        <DocumentList caseId={caseData.id} />
+                    </div>
+                )}
                 {activeTab === 'discusiones' && <DiscussionPanel caseId={caseData.id} />}
                 {activeTab === 'aprobaciones' && <ApprovalsPanel />}
+                {activeTab === 'facturacion' && <BillingPanel caseId={caseData.id} />}
                 {activeTab === 'ia' && <CaseTheoryAnalysis caseId={caseData.id} />}
             </div>
         </div>

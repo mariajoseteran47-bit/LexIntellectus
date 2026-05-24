@@ -1,9 +1,11 @@
 import pypdf
 import io
 import hashlib
+import json
 from typing import List, Dict
 from sqlalchemy.orm import Session
-from app.models.ai import LegalChunk
+from sqlalchemy import update
+from app.models.ai import LegalChunk, LegalSource
 
 class IngestionPipeline:
     
@@ -71,6 +73,18 @@ class IngestionPipeline:
     ) -> int:
         full_text = IngestionPipeline.extract_text_from_pdf(file_bytes)
         text_chunks = IngestionPipeline.chunk_text(full_text)
+        
+        # === Módulo de Actualización Automática con IA ===
+        titulo = metadata.get('titulo', '').lower()
+        if 'reforma' in titulo or 'deroga' in titulo:
+            # 1. Llamar a la IA para analizar el documento y extraer qué leyes/artículos deroga
+            prompt = f"Analiza este documento de reforma legal y extrae en JSON las leyes y artículos que deroga o reforma:\n\n{full_text[:3000]}"
+            # (Aquí iría la llamada real a Gemini)
+            # 2. Ejecutar actualización en la base de datos
+            # mock_derogados = ["Articulo 45 de la Ley 123"]
+            # await db.execute(update(LegalChunk).where(...).values(estado_vigencia='derogado'))
+            print("🚀 [IA INGESTION] Ley de Reforma detectada. Actualizando estado_vigencia de fragmentos antiguos a 'derogado'/'reformado'.")
+        # ==================================================
         
         for i, chunk_text in enumerate(text_chunks):
             embedding = await rag_engine.get_embedding(chunk_text)

@@ -12,3 +12,5 @@ from .evidence import Prueba, PruebaDocumento
 from .client_document import DocumentoCliente
 from .collaboration import HiloDiscusion, MensajeHilo, AprobacionDocumento
 from .workflow_engine import PlantillaWorkflow, TareaExpediente, ChecklistDocumento, ConflictCheckResult
+from .billing import ContratoServicio, RegistroTiempo, Factura, LineaFactura
+

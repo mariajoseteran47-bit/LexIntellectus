@@ -171,7 +171,11 @@ export default function ClientsPage() {
                 segmento: profile.segmento || 'individual',
                 calificacion_riesgo: profile.calificacion_riesgo || 'bajo',
                 referido_por: '',
-            });
+                es_exento_iva: (profile as any).es_exento_iva || false,
+                aplica_retenciones: (profile as any).aplica_retenciones || false,
+                dias_credito_predeterminado: (profile as any).dias_credito_predeterminado || 0,
+                tasa_interes_moratorio_predeterminada: (profile as any).tasa_interes_moratorio_predeterminada || '',
+            } as any);
         } else {
              // Reset profile form for user without profile
              setProfileForm({
@@ -676,6 +680,56 @@ export default function ClientsPage() {
                                                 <option value="medio">Medio</option>
                                                 <option value="alto">Alto</option>
                                             </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Configuración Fiscal & Crédito */}
+                                    <div className="space-y-4 p-4 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                                        <h3 className="text-sm font-bold text-emerald-700 flex items-center gap-2">
+                                            💰 Configuración Fiscal y Crédito
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <label className="flex items-center gap-3 cursor-pointer bg-white p-3 rounded-lg border border-surface-200 hover:border-emerald-300 transition-colors">
+                                                <input type="checkbox"
+                                                    checked={(profileForm as any).es_exento_iva || false}
+                                                    onChange={e => setProfileForm({ ...profileForm, es_exento_iva: e.target.checked } as any)}
+                                                    className="rounded border-surface-300 text-emerald-600 focus:ring-emerald-500" />
+                                                <div>
+                                                    <p className="text-sm font-semibold text-surface-800">Exento de IVA</p>
+                                                    <p className="text-[10px] text-surface-500">ONGs, zonas francas, régimen simplificado</p>
+                                                </div>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer bg-white p-3 rounded-lg border border-surface-200 hover:border-emerald-300 transition-colors">
+                                                <input type="checkbox"
+                                                    checked={(profileForm as any).aplica_retenciones || false}
+                                                    onChange={e => setProfileForm({ ...profileForm, aplica_retenciones: e.target.checked } as any)}
+                                                    className="rounded border-surface-300 text-emerald-600 focus:ring-emerald-500" />
+                                                <div>
+                                                    <p className="text-sm font-semibold text-surface-800">Aplica Retenciones</p>
+                                                    <p className="text-[10px] text-surface-500">IR DGI (10%) y ALMA (1.5%)</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-surface-500 uppercase tracking-wider">Días de Crédito</label>
+                                                <select className="input w-full"
+                                                    value={(profileForm as any).dias_credito_predeterminado || 0}
+                                                    onChange={e => setProfileForm({ ...profileForm, dias_credito_predeterminado: parseInt(e.target.value) } as any)}>
+                                                    <option value={0}>Contado</option>
+                                                    <option value={15}>15 días</option>
+                                                    <option value={30}>30 días</option>
+                                                    <option value={45}>45 días</option>
+                                                    <option value={60}>60 días</option>
+                                                    <option value={90}>90 días</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-surface-500 uppercase tracking-wider">Interés Moratorio (%/mes)</label>
+                                                <input type="number" step="0.5" min="0" max="100" className="input w-full" placeholder="0.00"
+                                                    value={(profileForm as any).tasa_interes_moratorio_predeterminada || ''}
+                                                    onChange={e => setProfileForm({ ...profileForm, tasa_interes_moratorio_predeterminada: e.target.value } as any)} />
+                                            </div>
                                         </div>
                                     </div>
 

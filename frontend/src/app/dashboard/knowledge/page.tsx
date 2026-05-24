@@ -7,6 +7,7 @@ import { aiService } from '@/services/aiService';
 export default function KnowledgeIngestionPage() {
     const [file, setFile] = useState<File | null>(null);
     const [sourceType, setSourceType] = useState('ley');
+    const [docTitle, setDocTitle] = useState('');
     const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
     const [result, setResult] = useState<any>(null);
     const [stats, setStats] = useState<any>(null);
@@ -39,10 +40,11 @@ export default function KnowledgeIngestionPage() {
         if (!file) return;
         setStatus('uploading');
         try {
-            const resp = await aiService.ingestDocument(file, sourceType);
+            const resp = await aiService.ingestDocument(file, sourceType, docTitle);
             setResult(resp);
             setStatus('success');
             setFile(null);
+            setDocTitle('');
             // Refresh stats
             try {
                 const token = localStorage.getItem('access_token');
@@ -123,7 +125,6 @@ export default function KnowledgeIngestionPage() {
                                     <Scale size={20} />
                                     <div className="text-left">
                                         <p className="text-sm font-bold">Ley / Decreto</p>
-                                        <p className="text-[10px] opacity-70">Normativa vigente</p>
                                     </div>
                                 </button>
                                 <button
@@ -134,10 +135,51 @@ export default function KnowledgeIngestionPage() {
                                     <FileText size={20} />
                                     <div className="text-left">
                                         <p className="text-sm font-bold">Jurisprudencia</p>
-                                        <p className="text-[10px] opacity-70">Sentencias CSJ</p>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setSourceType('reglamento')}
+                                    className={`p-3 border rounded-xl flex items-center gap-3 transition-all ${sourceType === 'reglamento' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'hover:bg-surface-50'
+                                        }`}
+                                >
+                                    <FileText size={20} />
+                                    <div className="text-left">
+                                        <p className="text-sm font-bold">Reglamento</p>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setSourceType('circular')}
+                                    className={`p-3 border rounded-xl flex items-center gap-3 transition-all ${sourceType === 'circular' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'hover:bg-surface-50'
+                                        }`}
+                                >
+                                    <Info size={20} />
+                                    <div className="text-left">
+                                        <p className="text-sm font-bold">Circular CSJ</p>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setSourceType('costumbre')}
+                                    className={`p-3 border rounded-xl flex items-center gap-3 transition-all ${sourceType === 'costumbre' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'hover:bg-surface-50'
+                                        }`}
+                                >
+                                    <Database size={20} />
+                                    <div className="text-left">
+                                        <p className="text-sm font-bold">Costumbre</p>
                                     </div>
                                 </button>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-surface-700 block mb-2">Título del Documento (Importante para Reformas)</label>
+                            <input 
+                                type="text" 
+                                value={docTitle}
+                                onChange={(e) => setDocTitle(e.target.value)}
+                                placeholder='Ej: "Ley de Reforma a la Ley 415" o "Circular 02-2024"'
+                                className="input w-full"
+                            />
+                            <p className="text-xs text-surface-500 mt-1">Si el título contiene la palabra "Reforma" o "Deroga", la IA analizará qué artículos desactivar automáticamente.</p>
                         </div>
 
                         <div className="border-2 border-dashed border-surface-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-3 bg-surface-50/50 hover:bg-surface-50 transition-colors">

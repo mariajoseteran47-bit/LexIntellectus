@@ -41,7 +41,7 @@ DEFAULT_PERMISSIONS = {
     "admin_despacho": [
         "cases.*", "deadlines.*", "documents.*", "users.*",
         "clients.*", "tenants.*", "ai.use", "settings.*",
-        "reports.*", "notifications.*", "knowledge.*",
+        "reports.*", "notifications.*", "knowledge.*", "billing.*",
     ],
     "abogado": [
         "cases.read", "cases.create", "cases.update",
@@ -49,6 +49,7 @@ DEFAULT_PERMISSIONS = {
         "documents.read", "documents.create",
         "clients.read", "clients.create", "clients.update",
         "ai.use", "reports.read",
+        "billing.read", "billing.create", "billing.update",
     ],
     "notario": [
         "cases.read", "cases.create", "cases.update",
@@ -56,6 +57,7 @@ DEFAULT_PERMISSIONS = {
         "documents.read", "documents.create",
         "clients.read", "clients.create",
         "ai.use",
+        "billing.read", "billing.create",
     ],
     "secretaria": [
         "cases.read", "cases.create",
@@ -67,6 +69,7 @@ DEFAULT_PERMISSIONS = {
         "cases.read",
         "reports.read",
         "clients.read",
+        "billing.*",
     ],
     "gestor": [
         "cases.read",

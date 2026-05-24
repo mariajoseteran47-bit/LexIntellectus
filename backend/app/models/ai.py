@@ -7,13 +7,31 @@ from pgvector.sqlalchemy import Vector
 
 from app.core.database import Base
 
+class LegalSource(Base):
+    __tablename__ = "legal_sources"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    titulo = Column(String(255), nullable=False)
+    tipo_fuente = Column(Enum('ley', 'decreto', 'jurisprudencia', 'doctrina', 'gaceta', 'reglamento', 'circular', 'costumbre', name="ai_source_type_global"), nullable=False)
+    estado = Column(Enum('vigente', 'reformada', 'derogada_total', 'derogada_parcial', name="legal_source_status"), default='vigente')
+    fecha_publicacion = Column(DateTime)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    chunks = relationship("LegalChunk", back_populates="source", cascade="all, delete-orphan")
+
 class LegalChunk(Base):
     __tablename__ = "legal_chunks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    source_type = Column(Enum('ley', 'decreto', 'jurisprudencia', 'doctrina', 'gaceta', name="ai_source_type"), nullable=False)
-    source_id = Column(UUID(as_uuid=True), nullable=True) # Generic link to future source tables
+    source_type = Column(Enum('ley', 'decreto', 'jurisprudencia', 'doctrina', 'gaceta', 'reglamento', 'circular', 'costumbre', name="ai_source_type"), nullable=False)
+    source_id = Column(UUID(as_uuid=True), ForeignKey("legal_sources.id"), nullable=True) 
     articulo_id = Column(UUID(as_uuid=True), nullable=True)
+    
+    estado_vigencia = Column(Enum('vigente', 'derogado', 'reformado', name="legal_chunk_status"), default='vigente')
+
+    source = relationship("LegalSource", back_populates="chunks")
     
     chunk_index = Column(Integer)
     contenido_texto = Column(Text, nullable=False)

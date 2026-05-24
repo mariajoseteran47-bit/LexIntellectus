@@ -15,22 +15,12 @@ export interface ChatRequest {
     expediente_id?: string;
 }
 
-// Assuming ChatResponse is the type of the data returned by the chat endpoint
-// This type was not provided in the original document, but is implied by the change.
 export interface ChatResponse {
-    // Define the structure of your chat response here
-    // For example:
-    // response: string;
-    // session_id: string;
-    // messages: ChatMessage[];
-    [key: string]: any; // Placeholder if the exact structure is unknown
+    [key: string]: any; 
 }
 
 export const aiService = {
     chat: async (data: ChatRequest) => {
-        // The original `data` parameter contains `message`, `mode`, `session_id`, `expediente_id`.
-        // The change implies these properties should be passed as the request body.
-        // Also, the response data is destructured directly.
         const { message, mode, session_id, expediente_id } = data;
         const response = await api.post<ChatResponse>('/ai/chat', { message, mode, session_id, expediente_id });
         return response.data;
@@ -46,10 +36,11 @@ export const aiService = {
         return response.data;
     },
 
-    ingestDocument: async (file: File, sourceType: string = 'ley') => {
+    ingestDocument: async (file: File, sourceType: string = 'ley', titulo: string = '') => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('source_type', sourceType);
+        if (titulo) formData.append('titulo', titulo);
 
         const response = await api.post('/ai/ingest', formData, {
             headers: {
@@ -57,6 +48,10 @@ export const aiService = {
             },
         });
         return response.data;
+    },
+
+    getSuggestions: async (expedienteId: string) => {
+        const response = await api.get(`/ai/suggestions/${expedienteId}`);
+        return response.data;
     }
 };
-// End of aiService

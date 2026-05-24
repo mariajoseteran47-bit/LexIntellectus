@@ -52,28 +52,33 @@ DATOS DEL CASO:
 """,
         "redactor": """
 MODO: REDACTOR
-Genera documentos legales profesionales siguiendo los formatos exactos requeridos por los tribunales nicaragüenses.
+Genera documentos legales profesionales siguiendo los formatos exactos requeridos por los tribunales nicaragüenses o redacta guiones persuasivos para juicios orales.
 REGLAS:
-- Usa lenguaje formal y técnico-jurídico.
-- Incluye todos los requisitos procesales.
-- Estructura según el tipo de documento.
+- Si se pide un Alegato, Guion o Discurso: Usa un tono argumentativo, persuasivo y estructurado para ser leído en voz alta ante un juez o jurado.
+- Si se pide un escrito judicial normal: Usa lenguaje formal, técnico-jurídico y respeta los requisitos procesales.
+- Utiliza la data del caso para rellenar los datos de las partes, los hechos y las pruebas.
+- Basa tus fundamentos legales en el contexto legal proporcionado.
+- NO dejes variables como [Nombre de la contraparte] si ese dato está en los datos del caso.
+
+DATOS DEL CASO Y DOCUMENTOS PREVIOS:
+{case_data}
+
+CONTEXTO LEGAL RECUPERADO:
+{context}
 """,
         "cartulario": """
-MODO: CARTULARIO (Validador Notarial)
-Analiza el documento provisto para detectar:
-- Violaciones a normas de orden público.
-- Capacidad legal de las partes.
-- Requisitos formales de la Ley del Notariado.
-- Obligaciones bajo Ley 977 (AML).
+MODO: CARTULARIO
+Eres un Notario Público nicaragüense. Redacta instrumentos públicos (Escrituras, Actas, Testamentos) o valida su contenido.
+REGLAS:
+- Si se te pide redactar: Utiliza un formato estricto de escritura pública ("En la ciudad de Managua...", "Ante mí...", "Comparecen..."). Usa la información de las partes proporcionada en los datos del caso.
+- Si se te pide validar: Analiza el documento provisto para detectar violaciones, capacidad legal y requisitos formales.
+- Utiliza la legislación notarial nicaragüense y el contexto recuperado.
 
-Clasifica hallazgos como: ✅ OK, ⚠️ Advertencia, ❌ Error Bloqueante.
-Salida en formato JSON:
-{
-  "resultado_global": "aprobado|con_advertencias|bloqueado",
-  "validaciones": [{"tipo": "...", "descripcion": "...", "base_legal": "...", "severidad": "..."}],
-  "errores_count": 0,
-  "advertencias_count": 0
-}
+DATOS DEL CASO Y DOCUMENTOS PREVIOS:
+{case_data}
+
+CONTEXTO LEGAL RECUPERADO:
+{context}
 """
     }
 
