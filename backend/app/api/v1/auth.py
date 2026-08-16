@@ -28,12 +28,17 @@ from app.schemas.auth import (
     TokenResponse,
     UserInfoResponse,
     AuthResponse,
+    MfaSetupResponse,
+    MfaVerifyRequest,
 )
+import pyotp
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post("/login", response_model=AuthResponse)
+from app.core.rate_limit import login_rate_limiter
+
+@router.post("/login", response_model=AuthResponse, dependencies=[Depends(login_rate_limiter)])
 async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     """
     Authenticate user with email and password.
@@ -57,6 +62,19 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cuenta inactiva o bloqueada. Contacte al administrador.",
         )
+
+    if user.mfa_enabled:
+        if not request.mfa_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MFA_REQUIRED",
+            )
+        totp = pyotp.TOTP(user.mfa_secret)
+        if not totp.verify(request.mfa_code):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Código MFA incorrecto",
+            )
 
     # Update last login
     user.last_login = datetime.utcnow()
@@ -93,6 +111,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
             sede_id=user.sede_id,
             foto_url=user.foto_url,
             status=str(user.status),
+            mfa_enabled=bool(user.mfa_enabled),
             last_login=user.last_login,
         ),
     )
@@ -174,6 +193,7 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
             sede_id=sede.id,
             foto_url=None,
             status=str(user.status),
+            mfa_enabled=user.mfa_enabled,
             last_login=user.last_login,
         ),
     )
@@ -238,6 +258,7 @@ async def get_me(
         sede_id=current_user.sede_id,
         foto_url=current_user.foto_url,
         status=str(current_user.status),
+        mfa_enabled=current_user.mfa_enabled,
         last_login=current_user.last_login,
     )
 
@@ -269,4 +290,61 @@ async def change_password(
     await db.commit()
 
     return {"message": "Contraseña actualizada correctamente"}
+
+
+@router.get("/mfa/setup", response_model=MfaSetupResponse)
+async def setup_mfa(current_user: Usuario = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Generate TOTP secret and QR provisioning URI."""
+    if current_user.mfa_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA ya está activado")
+    
+    secret = pyotp.random_base32()
+    current_user.mfa_secret = secret
+    await db.commit()
+    
+    totp = pyotp.TOTP(secret)
+    qr_uri = totp.provisioning_uri(name=current_user.email, issuer_name="LexIntellectus")
+    return MfaSetupResponse(secret=secret, qr_uri=qr_uri)
+
+
+@router.post("/mfa/verify")
+async def verify_mfa(
+    request: MfaVerifyRequest, 
+    current_user: Usuario = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    """Verify TOTP code and enable MFA."""
+    if current_user.mfa_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA ya está activado")
+    
+    if not current_user.mfa_secret:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA no configurado")
+        
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(request.code):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Código MFA incorrecto")
+        
+    current_user.mfa_enabled = True
+    await db.commit()
+    return {"message": "MFA activado exitosamente"}
+
+
+@router.post("/mfa/disable")
+async def disable_mfa(
+    request: MfaVerifyRequest, 
+    current_user: Usuario = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    """Disable MFA after verifying current code."""
+    if not current_user.mfa_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA no está activado")
+        
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(request.code):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Código MFA incorrecto")
+        
+    current_user.mfa_enabled = False
+    current_user.mfa_secret = None
+    await db.commit()
+    return {"message": "MFA desactivado exitosamente"}
 

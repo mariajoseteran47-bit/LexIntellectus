@@ -52,6 +52,22 @@ class Settings(BaseSettings):
 
     # AI / Gemini
     GOOGLE_API_KEY: str = ""
+    AI_STRATEGY: str = "local_expert"  # cloud_general or local_expert
+    AI_PROVIDER: str = "google"        # google or ollama (for local offline LLMs like DeepSeek-R1)
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "deepseek-r1:8b"
+
+    # Stripe & PayPal Payments
+    STRIPE_SECRET_KEY: str = "mock_stripe_secret_key_for_testing_only"
+    STRIPE_WEBHOOK_SECRET: str = "whsec_placeholder"
+    PAYPAL_CLIENT_ID: str = "placeholder_paypal_client_id"
+    PAYPAL_CLIENT_SECRET: str = "placeholder_paypal_client_secret"
+    PAYPAL_MODE: str = "sandbox"  # sandbox or live
+
+    # Database Encryption (Fernet symmetric key)
+    DB_ENCRYPTION_KEY: str = "T1Boc2QzSDRlNTZkNzhqOWowMTIzNDU2NzhqOWowMTI="
+
+
 
     @property
     def database_url(self) -> str:

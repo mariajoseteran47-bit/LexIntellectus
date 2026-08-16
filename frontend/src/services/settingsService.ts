@@ -58,4 +58,21 @@ export const settingsService = {
             new_password: newPassword,
         });
     },
+
+    // ── MFA ────────────────────────────────────────
+
+    async setupMfa(): Promise<{ secret: string; qr_uri: string }> {
+        const { data } = await api.get('/auth/mfa/setup');
+        return data;
+    },
+
+    async verifyMfa(code: string): Promise<{ message: string }> {
+        const { data } = await api.post('/auth/mfa/verify', { code });
+        return data;
+    },
+
+    async disableMfa(code: string): Promise<{ message: string }> {
+        const { data } = await api.post('/auth/mfa/disable', { code });
+        return data;
+    },
 };

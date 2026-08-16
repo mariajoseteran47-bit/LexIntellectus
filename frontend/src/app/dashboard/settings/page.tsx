@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { settingsService } from '@/services/settingsService';
+import MfaModal from '@/components/auth/MfaModal';
 
 interface TenantData {
     id: string;
@@ -32,6 +33,7 @@ export default function SettingsPage() {
     const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [passwordData, setPasswordData] = useState({ current: '', new_password: '', confirm: '' });
     const [showPasswords, setShowPasswords] = useState({ current: false, new_password: false, confirm: false });
+    const [showMfaModal, setShowMfaModal] = useState(false);
 
     const toast = useToast();
 
@@ -377,6 +379,35 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* MFA Section */}
+                                <div className="p-5 rounded-xl border border-surface-200 bg-surface-50/50">
+                                    <h3 className="font-semibold text-surface-800 mb-3">Autenticación de Dos Factores (MFA)</h3>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm text-surface-600">
+                                                    Protege tu cuenta con un paso adicional de seguridad.
+                                                </p>
+                                                {user?.mfa_enabled ? (
+                                                    <span className="inline-flex mt-2 items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        Activado
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex mt-2 items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-200 text-surface-800">
+                                                        Desactivado
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button 
+                                                onClick={() => setShowMfaModal(true)}
+                                                className={`btn text-sm py-1.5 px-4 ${user?.mfa_enabled ? 'btn-outline border-red-200 text-red-600 hover:bg-red-50' : 'btn-primary'}`}
+                                            >
+                                                {user?.mfa_enabled ? 'Desactivar MFA' : 'Configurar MFA'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -459,6 +490,17 @@ export default function SettingsPage() {
                     )}
                 </div>
             </div>
+
+            {/* 2FA Modal */}
+            <MfaModal
+                isOpen={showMfaModal}
+                onClose={() => setShowMfaModal(false)}
+                isCurrentlyEnabled={!!user?.mfa_enabled}
+                onSuccess={(newStatus) => {
+                    setUser((prev: any) => ({ ...prev, mfa_enabled: newStatus }));
+                    localStorage.setItem('user', JSON.stringify({ ...user, mfa_enabled: newStatus }));
+                }}
+            />
         </div>
     );
 }

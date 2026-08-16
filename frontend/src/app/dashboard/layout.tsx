@@ -21,6 +21,7 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const [user, setUser] = useState<UserInfo | null>(null);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const pathname = usePathname();
 
     useEffect(() => {
@@ -44,17 +45,38 @@ export default function DashboardLayout({
 
     return (
         <div className="min-h-screen bg-surface-50 flex">
+            {/* Mobile menu backdrop */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-surface-900/50 z-40 lg:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-surface-200 flex flex-col fixed h-full z-10">
+            <aside className={`bg-white border-r border-surface-200 flex flex-col fixed h-full z-50 transition-transform duration-300 w-64 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
                 {/* Logo */}
-                <div className="h-16 flex items-center px-6 border-b border-surface-200">
+                <div className="h-16 flex items-center justify-between px-6 border-b border-surface-200">
                     <h1 className="text-lg font-bold text-primary-500">
                         Lex<span className="text-accent-400">Intellectus</span>
                     </h1>
+                    <button 
+                        className="lg:hidden text-surface-400 hover:text-surface-600"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" onClick={() => {
+                    // Close menu on mobile when clicking a link
+                    if (window.innerWidth < 1024) {
+                        setIsMobileMenuOpen(false);
+                    }
+                }}>
                     <Link href="/dashboard" className={pathname === '/dashboard' ? 'sidebar-link-active' : 'sidebar-link'}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -156,11 +178,19 @@ export default function DashboardLayout({
             </aside>
 
             {/* Main content wrapper */}
-            <main className="flex-1 ml-64 flex flex-col min-h-screen">
+            <main className="flex-1 lg:ml-64 flex flex-col min-h-screen">
                 {/* Header */}
-                <header className="h-16 bg-white border-b border-surface-200 flex items-center justify-between px-8 sticky top-0 z-10">
-                    <div>
-                        <h2 className="text-lg font-semibold text-surface-800">
+                <header className="h-16 bg-white border-b border-surface-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10">
+                    <div className="flex items-center gap-3">
+                        <button 
+                            className="lg:hidden p-2 -ml-2 text-surface-500 hover:bg-surface-100 rounded-lg"
+                            onClick={() => setIsMobileMenuOpen(true)}
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <h2 className="text-lg font-semibold text-surface-800 hidden sm:block">
                             {pathname === '/dashboard' ? 'Dashboard' :
                                 pathname?.startsWith('/dashboard/cases') ? 'Expedientes' :
                                     pathname?.startsWith('/dashboard/agenda') ? 'Agenda' :
@@ -175,18 +205,18 @@ export default function DashboardLayout({
                                                                     pathname?.startsWith('/dashboard/users') ? 'Usuarios' : 'LexIntellectus'}
                         </h2>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 lg:gap-4">
                         <GlobalSearch />
-                        <button className="relative text-surface-400 hover:text-surface-600 transition-colors">
+                        <button className="relative p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
-                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-400 rounded-full border-2 border-white"></span>
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-accent-400 rounded-full border border-white"></span>
                         </button>
                     </div>
                 </header>
 
-                <div className="flex-1 p-8 bg-surface-50">
+                <div className="flex-1 p-4 lg:p-8 bg-surface-50 overflow-x-hidden">
                     {children}
                 </div>
                 <LegalAIAgent expedienteId={pathname?.startsWith('/dashboard/cases/') ? pathname.split('/').pop() : undefined} />

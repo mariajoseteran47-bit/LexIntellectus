@@ -44,4 +44,28 @@ class Documento(Base):
     # Relationships
     expediente = relationship("Expediente")
     subido_por = relationship("Usuario")
+    firmas = relationship("DocumentoFirma", back_populates="documento", cascade="all, delete-orphan")
+
+
+class DocumentoFirma(Base):
+    """Audit record for digital/electronic signatures (Simple e-Signature)."""
+    __tablename__ = "document_signatures"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    documento_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=False)
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    
+    # Audit trail details
+    firma_hash = Column(String(64), nullable=False)  # SHA-256 hash of document and metadata
+    ip_address = Column(String(50), nullable=False)
+    user_agent = Column(String(500), nullable=False)
+    signature_svg = Column(Text, nullable=False)     # Captured digitized SVG path/rubric
+    
+    signed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    documento = relationship("Documento", back_populates="firmas")
+    usuario = relationship("Usuario")
+
 

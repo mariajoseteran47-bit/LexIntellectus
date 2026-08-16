@@ -104,13 +104,68 @@ export default function CasesPage() {
                 )}
             </div>
 
-            {/* Table */}
+            {/* List View */}
             <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Mobile view (Cards) */}
+                <div className="block sm:hidden divide-y divide-surface-100">
+                    {loading ? (
+                        <div className="p-6 text-center text-surface-500">Cargando expedientes...</div>
+                    ) : cases.length === 0 ? (
+                        <div className="p-8 text-center">
+                            <FileText className="w-8 h-8 text-surface-400 mx-auto mb-2" />
+                            <p className="text-surface-900 font-medium">No se encontraron expedientes</p>
+                        </div>
+                    ) : (
+                        cases.map((c) => (
+                            <div key={c.id} className="p-4 hover:bg-surface-50/50 transition-colors">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <div className="font-medium text-primary-600">{c.numero_interno || 'Sin número'}</div>
+                                        <div className="text-xs text-surface-500">{c.numero_causa || '---'}</div>
+                                    </div>
+                                    <Link href={`/dashboard/cases/${c.id}`} className="p-2 -mr-2 text-surface-400 hover:text-primary-600">
+                                        <MoreVertical className="w-5 h-5" />
+                                    </Link>
+                                </div>
+                                <div className="text-sm text-surface-900 mb-2">
+                                    {c.resumen ? (c.resumen.length > 60 ? c.resumen.substring(0, 60) + '...' : c.resumen) : 'Sin carátula'}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 mb-3">
+                                    {(() => {
+                                        const svc = TIPOS_SERVICIO.find(s => s.value === c.tipo_servicio);
+                                        return svc ? (
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${svc.color}`}>
+                                                {svc.icon} {svc.label}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-600 capitalize">
+                                                {c.ramo || c.tipo_servicio}
+                                            </span>
+                                        );
+                                    })()}
+                                    <span className="badge bg-green-100 text-green-700">Activo</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs text-surface-500">
+                                    <div className="flex items-center gap-1 truncate max-w-[150px]">
+                                        <Briefcase className="w-3.5 h-3.5 flex-shrink-0" />
+                                        <span className="truncate">{c.juzgado || 'Sin asignar'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        {c.fecha_apertura ? new Date(c.fecha_apertura).toLocaleDateString() : '-'}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop view (Table) */}
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-surface-50 border-b border-surface-200">
                             <tr>
-                                <th className="px-6 py-4 font-semibold text-surface-700">Expediente / Causa</th>
+                                <th className="px-6 py-4 font-semibold text-surface-700 whitespace-nowrap">Expediente / Causa</th>
                                 <th className="px-6 py-4 font-semibold text-surface-700">Carátula</th>
                                 <th className="px-6 py-4 font-semibold text-surface-700">Materia / Juzgado</th>
                                 <th className="px-6 py-4 font-semibold text-surface-700">Estado</th>
@@ -141,8 +196,8 @@ export default function CasesPage() {
                                 cases.map((c) => (
                                     <tr key={c.id} className="hover:bg-surface-50/50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="font-medium text-primary-600">{c.numero_interno || 'Sin número'}</div>
-                                            <div className="text-xs text-surface-500">{c.numero_causa || '---'}</div>
+                                            <div className="font-medium text-primary-600 whitespace-nowrap">{c.numero_interno || 'Sin número'}</div>
+                                            <div className="text-xs text-surface-500 whitespace-nowrap">{c.numero_causa || '---'}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-surface-900 font-medium truncate max-w-xs" title={c.resumen || ''}>
@@ -167,9 +222,8 @@ export default function CasesPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="badge bg-green-100 text-green-700">Activo</span>
-                                            {/* TODO: Use real status from EstadoExpediente */}
                                         </td>
-                                        <td className="px-6 py-4 text-surface-600">
+                                        <td className="px-6 py-4 text-surface-600 whitespace-nowrap">
                                             <div className="flex items-center gap-1.5">
                                                 <Calendar className="w-3.5 h-3.5" />
                                                 {c.fecha_apertura ? new Date(c.fecha_apertura).toLocaleDateString() : '-'}

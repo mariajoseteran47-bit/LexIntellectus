@@ -6,10 +6,12 @@ FastAPI application with CORS, route registration, and startup events.
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import redis.asyncio as aioredis
+from fastapi_limiter import FastAPILimiter
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent, audit, case_timeline, reports, client_profiles, professional_profiles, evidences, client_documents, workflows, collaboration, workflow_engine, billing
+from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent, audit, case_timeline, reports, client_profiles, professional_profiles, evidences, client_documents, workflows, collaboration, workflow_engine, billing, portal, payments
 from app.middleware.tenant import TenantMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
 from app.core.error_handlers import register_exception_handlers
@@ -25,8 +27,14 @@ async def lifespan(app: FastAPI):
         print(f"📊 Database: {settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
         print(f"🔄 Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
         print(f"📦 MinIO: {settings.MINIO_ENDPOINT}")
+
+    # Initialize FastAPILimiter
+    redis_client = aioredis.from_url(settings.redis_url_computed, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_client)
+
     yield
     # Shutdown
+    await redis_client.aclose()
     print(f"🛑 {settings.APP_NAME} shutting down...")
 
 
@@ -113,7 +121,10 @@ app.include_router(workflows.router, prefix=api_prefix, tags=["Workflow Administ
 app.include_router(collaboration.router, prefix=api_prefix, tags=["Collaboration"])
 app.include_router(workflow_engine.router, prefix=api_prefix, tags=["Workflow Engine"])
 app.include_router(billing.router, prefix=api_prefix, tags=["Billing & Monetization"])
+app.include_router(portal.router, prefix=api_prefix)
+app.include_router(payments.router, prefix=api_prefix)
 app.include_router(health.router, prefix=api_prefix)
+
 
 @app.get("/")
 async def root():

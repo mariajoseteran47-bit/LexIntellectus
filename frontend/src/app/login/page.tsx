@@ -27,16 +27,24 @@ export default function LoginPage() {
         }
     }, []);
 
+    const [mfaRequired, setMfaRequired] = useState(false);
+    const [mfaCode, setMfaCode] = useState('');
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
         try {
+            const body: any = { email, password };
+            if (mfaRequired && mfaCode) {
+                body.mfa_code = mfaCode;
+            }
+
             const res = await fetch('/api/v1/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify(body),
             });
 
             if (!res.ok) {
@@ -46,6 +54,11 @@ export default function LoginPage() {
                     errorMessage = data.detail || errorMessage;
                 } catch {
                     errorMessage = `Error del servidor (${res.status})`;
+                }
+                if (errorMessage === 'MFA_REQUIRED') {
+                    setMfaRequired(true);
+                    setLoading(false);
+                    return;
                 }
                 throw new Error(errorMessage);
             }
@@ -62,7 +75,8 @@ export default function LoginPage() {
                 localStorage.removeItem('remembered_email');
             }
 
-            window.location.href = '/dashboard';
+            window.location.href = data.user.tipo_usuario === 'cliente' ? '/portal' : '/dashboard';
+
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -103,7 +117,8 @@ export default function LoginPage() {
             localStorage.setItem('access_token', data.token.access_token);
             localStorage.setItem('refresh_token', data.token.refresh_token);
             localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = '/dashboard';
+            window.location.href = data.user.tipo_usuario === 'cliente' ? '/portal' : '/dashboard';
+
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -237,7 +252,7 @@ export default function LoginPage() {
                                 />
                             </div>
 
-                            <div>
+                            <div className={mfaRequired ? 'hidden' : 'block'}>
                                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Contraseña</label>
                                 <div className="relative">
                                     <input
@@ -247,7 +262,7 @@ export default function LoginPage() {
                                         className="input-field pr-12"
                                         placeholder="••••••••"
                                         minLength={8}
-                                        required
+                                        required={!mfaRequired}
                                     />
                                     <button
                                         type="button"
@@ -272,7 +287,26 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            {!isRegister && (
+                            {mfaRequired && (
+                                <div className="animate-fade-in mt-4">
+                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">Código MFA (Autenticador)</label>
+                                    <input
+                                        type="text"
+                                        value={mfaCode}
+                                        onChange={(e) => setMfaCode(e.target.value)}
+                                        className="input-field text-center text-xl tracking-widest font-mono"
+                                        placeholder="000000"
+                                        maxLength={6}
+                                        required
+                                        autoFocus
+                                    />
+                                    <p className="text-xs text-surface-500 mt-2 text-center">
+                                        Abra su app autenticadora e ingrese el código de 6 dígitos.
+                                    </p>
+                                </div>
+                            )}
+
+                            {!isRegister && !mfaRequired && (
                                 <div className="flex items-center justify-between text-sm">
                                     <label className="flex items-center gap-2 text-surface-600 cursor-pointer">
                                         <input

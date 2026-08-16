@@ -12,7 +12,7 @@ from sqlalchemy import (
     ForeignKey, Enum, Numeric
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.core.database import Base
 
 
@@ -43,7 +43,8 @@ class ContratoServicio(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    case = relationship("Expediente", backref=relationship("ContratoServicio", uselist=False, back_populates="contrato_servicio"))
+    case = relationship("Expediente", backref=backref("contrato_servicio", uselist=False))
+
     client = relationship("Usuario", foreign_keys=[client_id])
 
 

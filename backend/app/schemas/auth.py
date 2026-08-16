@@ -14,6 +14,7 @@ from datetime import datetime
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+    mfa_code: Optional[str] = None
 
 
 class RegisterRequest(BaseModel):
@@ -29,8 +30,14 @@ class RegisterRequest(BaseModel):
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
+class MfaVerifyRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
 
 # === Response Schemas ===
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    qr_uri: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -50,6 +57,7 @@ class UserInfoResponse(BaseModel):
     sede_id: Optional[UUID] = None
     foto_url: Optional[str] = None
     status: str
+    mfa_enabled: bool = False
     last_login: Optional[datetime] = None
 
     class Config:

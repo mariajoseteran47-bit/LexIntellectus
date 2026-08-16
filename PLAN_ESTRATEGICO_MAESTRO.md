@@ -205,9 +205,9 @@ El sistema DEBE soportar TODOS como ciudadanos de primera clase.
 | Sprint 4 | Workflow Inteligente + Conflict Check | ✅ Completado |
 | Sprint 5 | Time Tracking + Facturación | ✅ Completado |
 | Sprint 6 | API Pública + Webhooks | 🔴 Pendiente |
-| Sprint 7 | NFRs (Seguridad, Caché, Mobile) | 🔴 Pendiente |
-| Sprint 8 | Portal del Cliente | 🔴 Pendiente |
-| Sprint 9 | IA Avanzada + Calendario | 🔴 Pendiente |
+| Sprint 7 | NFRs (Seguridad, Caché, Mobile) | ✅ Completado |
+| Sprint 8 | Portal del Cliente | ✅ Completado |
+| Sprint 9 | IA Avanzada + Calendario | ✅ Completado |
 
 ---
 
@@ -529,41 +529,35 @@ Sprint 1 (Backend Multi-Servicio)
 
 # PARTE V — REGISTRO DE SESIONES Y CONTINUIDAD
 
-## Última Sesión: 2026-05-24
+## Última Sesión: 2026-08-16
 
 ### Sprints Completados en Esta Sesión
 
 | Sprint | Descripción |
 |--------|-------------|
-| Sprint 5 | Backend API (billing.py) + Frontend Panel Global (`/dashboard/billing`) y Widgets en Expediente |
+| Sprint 7 | NFRs (Seguridad MFA 2FA TOTP, Índices PostgreSQL GIN/Trgm, Rate Limiting con Redis y Responsividad Mobile en Dashboard y Portal) |
+| Sprint 8 | Consolidación y Verificación del Portal del Cliente (`/portal`, `/portal/cases`, `/portal/billing`, `/portal/documents`) + Corrección y Sincronización de Autenticación (`admin123`) |
+| Sprint 9 | IA Avanzada (Borrador de Escritos, Scraper de Causas con Scrubber PII), Sincronización Calendario iCal, Firma Electrónica y Cifrado At-Rest (Fernet) |
 
 ### Archivos Clave Creados/Modificados
 
 **Backend:**
-- `backend/app/api/v1/billing.py` — API de finanzas y contratos
-- `backend/app/models/billing.py` — Modelos de Time Tracking e Invoices
-- `backend/alembic/versions/6d9da041ab69_sprint5_billing.py`
+- `backend/app/api/v1/portal.py` — API del portal del cliente con aislamiento estricto
+- `backend/app/api/v1/payments.py` — Integración de pasarelas de pago y transferencias
+- `backend/app/api/v1/auth.py` — Manejo seguro de `mfa_enabled` booleano en respuesta
+- `backend/tests/test_portal.py` — Suite de pruebas de aislamiento y endpoints del portal (100% pass)
 
 **Frontend:**
-- `frontend/src/app/dashboard/billing/page.tsx` — Panel Global de Facturación [NUEVO]
-- `frontend/src/app/dashboard/layout.tsx` — Sidebar actualizado con enlace "Facturación"
-- `frontend/src/components/cases/BillingPanel.tsx` — Panel de cronómetro interactivo para registro de horas
+- `frontend/src/app/portal/layout.tsx` — Layout cliente con diseño adaptativo y control de acceso
+- `frontend/src/app/portal/page.tsx` — Dashboard del cliente con métricas y resumen de trámites
+- `frontend/src/app/portal/cases/page.tsx` — Vista de expedientes asignados al cliente
+- `frontend/src/app/portal/billing/page.tsx` — Facturas y pasarela de cobros online
+- `frontend/src/app/portal/documents/page.tsx` — Repositorio documental compartido
 
 ---
 
-## 🔴 PRÓXIMO SPRINT: Sprint 6 — API Pública + Webhooks
-*(Nota: Este sprint ha sido pausado a petición del usuario para ser retomado posteriormente)*
-
-**Objetivo:** Que LexIntellectus se integre con software contable y financiero externo (QuickBooks, Xero, etc).
-
-**Tareas pendientes:**
-1. Router separado `/api/v1/public/` con auth por API Key
-2. Modelo `ApiKey`
-3. Middleware de validación de API Key + rate limiting
-4. Endpoints públicos: invoices, payments, clients
-5. Servicio async de despacho de webhooks (Redis queue)
-6. Frontend: panel de administración de API Keys y webhooks en Settings
+## 🔴 PRÓXIMO SPRINT SUGERIDO: Sprint 7 (NFRs: Seguridad, Caché Redis y Mobile) o Sprint 9 (IA Avanzada Copiloto Legal)
 
 ---
 
-**[Fin del Plan Estratégico Maestro v4.2 — Actualizado 2026-05-24]**
+**[Fin del Plan Estratégico Maestro v4.3 — Actualizado 2026-08-16]**

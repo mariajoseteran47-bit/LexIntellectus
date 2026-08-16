@@ -17,4 +17,7 @@ from .professional_profiles import *
 from .evidences import *
 from .client_documents import *
 from .billing import *
+from .portal import *
+from .payments import *
+
 

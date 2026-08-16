@@ -85,6 +85,32 @@ services:
       retries: 3
       start_period: 15s
 
+  celery_worker:
+    build: ./backend
+    container_name: lexintellectus-celery
+    restart: unless-stopped
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://lexintellectus:lexintellectus_dev_2026@postgres:5432/lexintellectus
+      REDIS_URL: redis://:lexintellectus_redis_2026@redis:6379/0
+      REDIS_HOST: redis
+      POSTGRES_HOST: postgres
+      MINIO_ENDPOINT: minio:9000
+      APP_ENV: development
+      APP_DEBUG: "true"
+      SMTP_SERVER: ${SMTP_SERVER:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-""}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-""}
+      SENDER_EMAIL: ${SENDER_EMAIL:-"noreply@lexintellectus.com"}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   frontend:
     build: ./frontend
     container_name: lexintellectus-web

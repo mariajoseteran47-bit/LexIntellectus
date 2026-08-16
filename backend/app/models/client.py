@@ -13,6 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.services.encryption_service import EncryptedString
 
 
 class PerfilCliente(Base):
@@ -35,8 +36,8 @@ class PerfilCliente(Base):
     )
 
     # === IDENTIFICACIÓN (ambos tipos) ===
-    cedula_identidad = Column(String(50))       # Cédula para naturales
-    ruc = Column(String(30))                     # RUC (aplica a ambos)
+    cedula_identidad = Column(EncryptedString)       # Cédula para naturales
+    ruc = Column(EncryptedString)                     # RUC (aplica a ambos)
     nacionalidad = Column(String(100), default="Nicaragüense")
 
     # === DATOS PERSONA JURÍDICA ===
@@ -58,7 +59,7 @@ class PerfilCliente(Base):
     actividad_economica = Column(String(200))
 
     # === CONTACTO Y DOMICILIO ===
-    direccion_domicilio = Column(Text)            # Dirección legal / domicilio
+    direccion_domicilio = Column(EncryptedString)            # Dirección legal / domicilio
     ciudad = Column(String(100))
     departamento = Column(String(100))
     pais = Column(String(100), default="Nicaragua")

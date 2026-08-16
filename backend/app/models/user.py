@@ -13,6 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.services.encryption_service import EncryptedString
 
 
 class Usuario(Base):
@@ -26,7 +27,7 @@ class Usuario(Base):
     password_hash = Column(String(255), nullable=False)
     nombre = Column(String(100), nullable=False)
     apellido = Column(String(100), nullable=False)
-    telefono = Column(String(20))
+    telefono = Column(EncryptedString)
     foto_url = Column(String(500))
     tipo_usuario = Column(
         Enum(

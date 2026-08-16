@@ -11,11 +11,13 @@ from app.core.rbac import require_permission
 from app.models.user import Usuario
 from app.models.case import Expediente
 from app.models.document import Documento
+
 from app.schemas.document import DocumentResponse, DocumentListResponse
 from app.services.storage import storage_service
 from app.core.error_handlers import validate_upload_file
+from app.core.rate_limit import default_rate_limiter
 
-router = APIRouter(prefix="/documents", tags=["Documents"])
+router = APIRouter(prefix="/documents", tags=["Documents"], dependencies=[Depends(default_rate_limiter)])
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(

@@ -20,6 +20,7 @@ class DocumentResponse(DocumentBase):
     created_at: datetime
     subido_por_id: Optional[UUID]
     download_url: Optional[str] = None # Generated dynamically
+    tags: Optional[list[str]] = []
 
     class Config:
         from_attributes = True

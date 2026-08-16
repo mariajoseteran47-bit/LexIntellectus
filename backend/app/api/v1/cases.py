@@ -12,12 +12,14 @@ from app.core.rbac import require_permission
 from app.models.user import Usuario
 from app.models.case import Expediente, ParteProcesal, EstadoExpediente
 from app.models.case_extended import NotaInterna, HistorialEstado, ActuacionProcesal, EtapaProcesal
+from app.core.cache import get_cache, set_cache
 from app.schemas.case import (
     ExpedienteCreate, ExpedienteUpdate, ExpedienteResponse, ExpedienteListResponse,
     ParteCreate, ParteResponse, NotaInternaCreate, NotaInternaResponse, EstadoResponse
 )
+from app.core.rate_limit import default_rate_limiter
 
-router = APIRouter(prefix="/cases", tags=["Cases"])
+router = APIRouter(prefix="/cases", tags=["Cases"], dependencies=[Depends(default_rate_limiter)])
 
 @router.get("", response_model=ExpedienteListResponse)
 async def list_cases(
@@ -393,12 +395,32 @@ async def get_case_statuses(
     current_user: Usuario = Depends(require_permission("cases.read"))
 ):
     """Obtener la lista de estados configurados para el despacho."""
+    cache_key = f"statuses:{current_user.tenant_id}"
+    cached_statuses = await get_cache(cache_key)
+    if cached_statuses:
+        return cached_statuses
+
     query = select(EstadoExpediente).where(
         EstadoExpediente.tenant_id == current_user.tenant_id
     ).order_by(EstadoExpediente.orden)
     
     result = await db.execute(query)
-    return result.scalars().all()
+    statuses = result.scalars().all()
+    
+    # We must format it to a dict because models are not easily serializable by JSON
+    status_list = [
+        {
+            "id": str(s.id),
+            "codigo": s.codigo,
+            "nombre": s.nombre,
+            "color_hex": s.color_hex,
+            "es_final": s.es_final,
+            "orden": s.orden,
+        }
+        for s in statuses
+    ]
+    await set_cache(cache_key, status_list, expire_seconds=3600)
+    return status_list
 
 
 # === WORKFLOW / ETAPAS PROCESALES ===
@@ -412,6 +434,11 @@ async def list_workflow_stages(
     current_user: Usuario = Depends(require_permission("cases.read"))
 ):
     """Listar etapas procesales específicas para un ramo, tipo de servicio, y/o tipo de proceso."""
+    cache_key = f"stages:{ramo}:{tipo_servicio}:{tipo_proceso}"
+    cached_stages = await get_cache(cache_key)
+    if cached_stages:
+        return cached_stages
+
     from app.models.case_extended import EtapaProcesal
     
     query = select(EtapaProcesal)
@@ -431,7 +458,7 @@ async def list_workflow_stages(
     result = await db.execute(query)
     stages = result.scalars().all()
     
-    return [
+    stage_list = [
         {
             "id": str(s.id),
             "ramo": s.ramo,
@@ -443,6 +470,8 @@ async def list_workflow_stages(
         }
         for s in stages
     ]
+    await set_cache(cache_key, stage_list, expire_seconds=3600)
+    return stage_list
 
 
 @router.patch("/{case_id}/stage")
@@ -500,3 +529,44 @@ async def change_case_stage(
         "etapa_nombre": stage.nombre,
         "message": f"Etapa procesal cambiada a '{stage.nombre}'"
     }
+
+from fastapi import Response
+from app.models.case import PlazoFatal
+from app.services.calendar_service import CalendarService
+
+@router.get("/{id}/ical.ics")
+async def get_case_ical(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_permission("cases.read"))
+):
+    """Export all deadlines for a specific case in RFC 5545 iCalendar format."""
+    case = await db.get(Expediente, id)
+    if not case or case.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=404, detail="Expediente no encontrado")
+
+    # Fetch all deadlines for this case
+    deadlines_query = (
+        select(PlazoFatal)
+        .where(
+            PlazoFatal.expediente_id == id,
+            PlazoFatal.status == "pendiente"
+        )
+    )
+    result = await db.execute(deadlines_query)
+    deadlines = result.scalars().all()
+
+    # Generate iCal content
+    ical_content = CalendarService.generate_ical(
+        deadlines,
+        calendar_name=f"LexIntellectus - Causa {case.numero_causa or 'Sin Causa'}"
+    )
+
+    return Response(
+        content=ical_content,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": f"attachment; filename=case_{id}_calendar.ics"
+        }
+    )
+

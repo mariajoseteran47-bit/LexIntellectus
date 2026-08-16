@@ -29,6 +29,18 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
+    from fastapi_limiter import FastAPILimiter
+    from unittest.mock import AsyncMock
+    FastAPILimiter.redis = AsyncMock()
+    FastAPILimiter.redis.eval = AsyncMock(return_value=0)
+    FastAPILimiter.redis.evalsha = AsyncMock(return_value=0)
+    async def mock_identifier(*args, **kwargs):
+        return "mock_ip"
+    FastAPILimiter.identifier = mock_identifier
+    async def mock_callback(*args, **kwargs):
+        pass
+    FastAPILimiter.http_callback = mock_callback
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
