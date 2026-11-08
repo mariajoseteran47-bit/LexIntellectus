@@ -360,6 +360,19 @@ async def act_on_approval(
     if approval.solicitante:
         resp.solicitante_nombre = approval.solicitante.nombre_completo or approval.solicitante.email
     resp.aprobador_nombre = current_user.nombre_completo or current_user.email
+
+    if data.estado == 'aprobado':
+        from app.services.webhook_service import webhook_service
+        await webhook_service.dispatch_event(
+            db=db,
+            tenant_id=current_user.tenant_id,
+            event_type="document.approved",
+            data={
+                "approval_id": str(approval_id),
+                "documento_id": str(resp.documento_id),
+                "expediente_id": str(resp.expediente_id) if resp.expediente_id else None,
+            },
+        )
     return resp
 
 

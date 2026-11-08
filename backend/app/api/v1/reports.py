@@ -40,7 +40,7 @@ def _get_date_range(period: str) -> tuple[date, date]:
 
 @router.get("/overview")
 async def get_reports_overview(
-    period: str = Query("month", regex="^(week|month|quarter|year)$"),
+    period: str = Query("month", pattern="^(week|month|quarter|year)$"),
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(require_permission("cases.read"))
 ):

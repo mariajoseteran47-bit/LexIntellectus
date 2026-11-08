@@ -30,6 +30,7 @@ from app.schemas.billing import (
     RegistroTiempoCreate, RegistroTiempoResponse, RegistroTiempoUpdate,
     FacturaCreate, FacturaResponse, FacturaUpdateStatus
 )
+from app.services.webhook_service import webhook_service
 
 router = APIRouter(prefix="/billing", tags=["Billing & Monetization"])
 
@@ -380,9 +381,23 @@ async def generate_invoice(
             .values(factura_id=factura.id)
         )
         
+    factura_id = factura.id
     await db.commit()
-    await db.refresh(factura)
-    return factura
+    await webhook_service.dispatch_event(
+        db=db,
+        tenant_id=tenant_id,
+        event_type="invoice.created",
+        data={
+            "factura_id": str(factura_id),
+            "numero_factura": numero_factura,
+            "total_factura": float(total_factura),
+            "neto_a_pagar": float(neto_a_pagar),
+            "moneda": invoice_in.moneda,
+        },
+    )
+    from sqlalchemy.orm import selectinload
+    inv_q = await db.execute(select(Factura).options(selectinload(Factura.lineas)).where(Factura.id == factura_id))
+    return inv_q.scalar_one()
 
 
 @router.get("/invoices", response_model=List[FacturaResponse])
@@ -471,9 +486,40 @@ async def update_invoice_status(
             .values(facturado=True)
         )
         
+    inv_id = invoice.id
+    inv_num = invoice.numero_factura
+    inv_neto = float(invoice.neto_a_pagar or 0)
+    inv_moneda = invoice.moneda
     await db.commit()
-    await db.refresh(invoice)
-    return invoice
+    if status_in.estado == 'pagada':
+        await webhook_service.dispatch_event(
+            db=db,
+            tenant_id=tenant_id,
+            event_type="invoice.paid",
+            data={
+                "factura_id": str(inv_id),
+                "numero_factura": inv_num,
+                "estado": "pagada",
+                "neto_a_pagar": inv_neto,
+                "moneda": inv_moneda,
+            },
+        )
+    elif status_in.estado == 'vencida':
+        await webhook_service.dispatch_event(
+            db=db,
+            tenant_id=tenant_id,
+            event_type="invoice.overdue",
+            data={
+                "factura_id": str(inv_id),
+                "numero_factura": inv_num,
+                "estado": "vencida",
+                "neto_a_pagar": inv_neto,
+                "moneda": inv_moneda,
+            },
+        )
+    from sqlalchemy.orm import selectinload
+    inv_q = await db.execute(select(Factura).options(selectinload(Factura.lineas)).where(Factura.id == inv_id))
+    return inv_q.scalar_one()
 
 
 @router.get("/invoices/export/json")

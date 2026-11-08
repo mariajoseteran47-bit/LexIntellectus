@@ -71,7 +71,21 @@ async def upload_document(
     await db.commit()
     await db.refresh(doc)
     
-    return doc
+    doc_id = doc.id
+    from app.services.webhook_service import webhook_service
+    await webhook_service.dispatch_event(
+        db=db,
+        tenant_id=tenant_id,
+        event_type="document.uploaded",
+        data={
+            "documento_id": str(doc_id),
+            "expediente_id": str(expediente_id),
+            "nombre_archivo": file.filename,
+            "categoria": categoria,
+        },
+    )
+    doc_res = await db.execute(select(Documento).where(Documento.id == doc_id))
+    return doc_res.scalar_one()
 
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(

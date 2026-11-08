@@ -67,6 +67,7 @@ export default function SettingsPage() {
     const [passwordData, setPasswordData] = useState({ current: '', new_password: '', confirm: '' });
     const [showPasswords, setShowPasswords] = useState({ current: false, new_password: false, confirm: false });
     const [showMfaModal, setShowMfaModal] = useState(false);
+    const [selectedTheme, setSelectedTheme] = useState<string>('clasico');
 
     // Sprint 6: Public API Keys & Webhooks state
     const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
@@ -99,6 +100,9 @@ export default function SettingsPage() {
     useEffect(() => {
         const stored = localStorage.getItem('user');
         if (stored) setUser(JSON.parse(stored));
+        const savedTheme = localStorage.getItem('lex_theme') || 'clasico';
+        setSelectedTheme(savedTheme);
+        document.documentElement.setAttribute('data-theme', savedTheme);
         fetchTenantData();
     }, []);
 
@@ -1070,33 +1074,42 @@ export default function SettingsPage() {
 
                             <div>
                                 <h3 className="text-sm font-semibold text-surface-800 mb-3">Tema de Color</h3>
-                                <div className="grid grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     {[
-                                        { name: 'Clásico (Azul)', colors: ['#1E3A5F', '#D4AF37', '#F8FAFC'], active: true },
-                                        { name: 'Oscuro', colors: ['#1a1a2e', '#e94560', '#16213e'], active: false },
-                                        { name: 'Profesional', colors: ['#2d3436', '#00b894', '#dfe6e9'], active: false },
-                                    ].map((theme) => (
-                                        <button
-                                            key={theme.name}
-                                            className={`p-4 rounded-xl border-2 text-center transition-all ${
-                                                theme.active ? 'border-primary-500 ring-2 ring-primary-500/20' : 'border-surface-200 hover:border-surface-300'
-                                            }`}
-                                        >
-                                            <div className="flex gap-1.5 justify-center mb-2">
-                                                {theme.colors.map((c, ci) => (
-                                                    <div key={ci} className="w-6 h-6 rounded-full border border-surface-200" style={{ backgroundColor: c }} />
-                                                ))}
-                                            </div>
-                                            <p className="text-xs font-medium text-surface-700">{theme.name}</p>
-                                            {theme.active && <p className="text-[10px] text-primary-500 mt-1">Activo</p>}
-                                        </button>
-                                    ))}
+                                        { id: 'clasico', name: 'Clásico (Azul)', colors: ['#1E3A5F', '#D4AF37', '#F8FAFC'] },
+                                        { id: 'oscuro', name: 'Oscuro (Nocturno)', colors: ['#0f172a', '#e94560', '#1e293b'] },
+                                        { id: 'profesional', name: 'Profesional (Esmeralda)', colors: ['#0f766e', '#00b894', '#f1f5f4'] },
+                                    ].map((theme) => {
+                                        const isActive = selectedTheme === theme.id;
+                                        return (
+                                            <button
+                                                key={theme.id}
+                                                onClick={() => {
+                                                    setSelectedTheme(theme.id);
+                                                    localStorage.setItem('lex_theme', theme.id);
+                                                    document.documentElement.setAttribute('data-theme', theme.id);
+                                                    toast.success('Tema aplicado', `Se activó el tema ${theme.name}.`);
+                                                }}
+                                                className={`p-4 rounded-xl border-2 text-center transition-all ${
+                                                    isActive ? 'border-primary-500 ring-2 ring-primary-500/20' : 'border-surface-200 hover:border-surface-300'
+                                                }`}
+                                            >
+                                                <div className="flex gap-1.5 justify-center mb-2">
+                                                    {theme.colors.map((c, ci) => (
+                                                        <div key={ci} className="w-6 h-6 rounded-full border border-surface-200" style={{ backgroundColor: c }} />
+                                                    ))}
+                                                </div>
+                                                <p className="text-xs font-medium text-surface-700">{theme.name}</p>
+                                                {isActive && <p className="text-[10px] text-primary-500 font-semibold mt-1">✓ Activo</p>}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                                <p className="font-medium">🎨 Temas adicionales próximamente</p>
-                                <p className="text-xs text-amber-600 mt-1">Los temas Oscuro y Profesional estarán disponibles en la próxima versión.</p>
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+                                <p className="font-medium">🎨 Selector de Temas Activo</p>
+                                <p className="text-xs text-green-600 mt-1">El tema seleccionado se aplica en tiempo real y queda guardado en tu navegador.</p>
                             </div>
                         </div>
                     )}

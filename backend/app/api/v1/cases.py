@@ -18,6 +18,7 @@ from app.schemas.case import (
     ParteCreate, ParteResponse, NotaInternaCreate, NotaInternaResponse, EstadoResponse
 )
 from app.core.rate_limit import default_rate_limiter
+from app.services.webhook_service import webhook_service
 
 router = APIRouter(prefix="/cases", tags=["Cases"], dependencies=[Depends(default_rate_limiter)])
 
@@ -110,8 +111,22 @@ async def create_case(
         db.add(new_parte)
         
     await db.commit()
-    await db.refresh(new_case, attribute_names=["partes"])
-    return new_case
+    case_id_val = new_case.id
+    await webhook_service.dispatch_event(
+        db=db,
+        tenant_id=tenant_id,
+        event_type="matter.created",
+        data={
+            "case_id": str(case_id_val),
+            "numero_interno": numero_interno,
+            "tipo_servicio": case_in.tipo_servicio,
+            "ramo": case_in.ramo,
+        },
+    )
+    res_q = await db.execute(
+        select(Expediente).options(selectinload(Expediente.partes)).where(Expediente.id == case_id_val)
+    )
+    return res_q.scalar_one()
 
 @router.get("/{case_id}", response_model=ExpedienteResponse)
 async def get_case(
@@ -260,20 +275,44 @@ async def change_case_status(
     )
     db.add(history)
 
+    is_final = bool(new_status.es_final)
+    status_name = new_status.nombre
+    new_status_uuid = new_status.id
     # If marking as final status, set close date
-    if new_status.es_final and not case.fecha_cierre:
+    if is_final and not case.fecha_cierre:
         from datetime import date
         case.fecha_cierre = date.today()
-    
+    close_date_str = str(case.fecha_cierre) if case.fecha_cierre else None
+
     await db.commit()
-    await db.refresh(case)
-    
+    await webhook_service.dispatch_event(
+        db=db,
+        tenant_id=tenant_id,
+        event_type="matter.status_changed",
+        data={
+            "case_id": str(case_id),
+            "estado_id": str(new_status_uuid),
+            "estado_nombre": status_name,
+        },
+    )
+    if is_final:
+        await webhook_service.dispatch_event(
+            db=db,
+            tenant_id=tenant_id,
+            event_type="matter.closed",
+            data={
+                "case_id": str(case_id),
+                "estado_nombre": status_name,
+                "fecha_cierre": close_date_str,
+            },
+        )
+
     return {
-        "id": str(case.id),
-        "estado_id": str(case.estado_id),
-        "estado_nombre": new_status.nombre,
-        "fecha_cierre": str(case.fecha_cierre) if case.fecha_cierre else None,
-        "message": f"Estado cambiado a '{new_status.nombre}'"
+        "id": str(case_id),
+        "estado_id": str(new_status_uuid),
+        "estado_nombre": status_name,
+        "fecha_cierre": close_date_str,
+        "message": f"Estado cambiado a '{status_name}'"
     }
 
 
@@ -520,14 +559,25 @@ async def change_case_stage(
     )
     db.add(event)
     
+    stage_uuid = stage.id
+    stage_name = stage.nombre
     await db.commit()
-    await db.refresh(case)
-    
+    await webhook_service.dispatch_event(
+        db=db,
+        tenant_id=tenant_id,
+        event_type="matter.stage_changed",
+        data={
+            "case_id": str(case_id),
+            "etapa_actual_id": str(stage_uuid),
+            "etapa_nombre": stage_name,
+        },
+    )
+
     return {
-        "id": str(case.id),
-        "etapa_actual_id": str(case.etapa_actual_id),
-        "etapa_nombre": stage.nombre,
-        "message": f"Etapa procesal cambiada a '{stage.nombre}'"
+        "id": str(case_id),
+        "etapa_actual_id": str(stage_uuid),
+        "etapa_nombre": stage_name,
+        "message": f"Etapa procesal cambiada a '{stage_name}'"
     }
 
 from fastapi import Response

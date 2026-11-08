@@ -11,6 +11,7 @@ from app.core.database import async_session_maker
 from app.models.case import PlazoFatal, Expediente
 from app.models.user import Usuario
 from app.services.email_service import send_email
+from app.services.webhook_service import webhook_service
 
 async def _check_deadlines_async():
     today = date.today()
@@ -63,6 +64,43 @@ async def _check_deadlines_async():
                 plazo.alerta_72h_enviada = True
             elif days_left == 1:
                 plazo.alerta_24h_enviada = True
+
+            await webhook_service.dispatch_event(
+                db=session,
+                tenant_id=exp.tenant_id,
+                event_type="deadline.approaching",
+                data={
+                    "deadline_id": str(plazo.id),
+                    "expediente_id": str(exp.id),
+                    "numero_interno": exp.numero_interno,
+                    "descripcion": plazo.descripcion,
+                    "fecha_vencimiento": str(plazo.fecha_vencimiento),
+                    "days_left": days_left,
+                },
+            )
+
+        # Also check expired deadlines
+        expired_query = select(PlazoFatal, Expediente).join(
+            Expediente, PlazoFatal.expediente_id == Expediente.id
+        ).where(
+            PlazoFatal.status == 'pendiente',
+            PlazoFatal.fecha_vencimiento < today
+        )
+        expired_res = await session.execute(expired_query)
+        for plazo_exp, exp_obj in expired_res.all():
+            plazo_exp.status = 'vencido'
+            await webhook_service.dispatch_event(
+                db=session,
+                tenant_id=exp_obj.tenant_id,
+                event_type="deadline.expired",
+                data={
+                    "deadline_id": str(plazo_exp.id),
+                    "expediente_id": str(exp_obj.id),
+                    "numero_interno": exp_obj.numero_interno,
+                    "descripcion": plazo_exp.descripcion,
+                    "fecha_vencimiento": str(plazo_exp.fecha_vencimiento),
+                },
+            )
                 
         await session.commit()
 

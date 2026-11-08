@@ -91,7 +91,7 @@ async def get_document_suggestions(
 @router.post("/chat")
 async def chat_interaction(
     message: str = Body(...),
-    mode: str = Body(..., regex="^(consultor|estratega|redactor|cartulario)$"),
+    mode: str = Body(..., pattern="^(consultor|estratega|redactor|cartulario)$"),
     session_id: Optional[UUID] = Body(None),
     expediente_id: Optional[UUID] = Body(None),
     db: AsyncSession = Depends(get_db),

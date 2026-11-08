@@ -119,10 +119,24 @@ async def create_client_profile(
     db.add(profile)
     await db.flush()
 
+    profile_id_val = profile.id
     result = await db.execute(
-        select(PerfilCliente).options(*_profile_options()).where(PerfilCliente.id == profile.id)
+        select(PerfilCliente).options(*_profile_options()).where(PerfilCliente.id == profile_id_val)
     )
-    return ClientProfileResponse.model_validate(result.scalar_one())
+    resp_obj = ClientProfileResponse.model_validate(result.scalar_one())
+    from app.services.webhook_service import webhook_service
+    await webhook_service.dispatch_event(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        event_type="client.created",
+        data={
+            "profile_id": str(profile_id_val),
+            "user_id": str(data.user_id),
+            "tipo_persona": data.tipo_persona,
+            "razon_social": data.razon_social,
+        },
+    )
+    return resp_obj
 
 
 @router.patch("/profiles/{profile_id}", response_model=ClientProfileResponse)

@@ -518,10 +518,24 @@ async def check_conflict(
         verificado_por_id=current_user.id,
     )
     db.add(check_result)
+    check_id = check_result.id
     await db.flush()
 
+    if tiene_conflicto:
+        from app.services.webhook_service import webhook_service
+        await webhook_service.dispatch_event(
+            db=db,
+            tenant_id=tenant_id,
+            event_type="conflict.detected",
+            data={
+                "conflict_check_id": str(check_id),
+                "nombre_buscado": nombre,
+                "total_coincidencias": len(matches),
+            },
+        )
+
     return ConflictCheckResponse(
-        id=check_result.id,
+        id=check_id,
         tiene_conflicto=tiene_conflicto,
         nombre_buscado=nombre,
         coincidencias=matches,
