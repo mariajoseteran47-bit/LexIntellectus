@@ -3,10 +3,16 @@
 import { useState, useEffect } from 'react';
 import {
     Building2, Users, Shield, MapPin, Save, Plus, X, Eye, EyeOff,
-    Settings as SettingsIcon, ChevronRight, Palette, Bell, Lock
+    Settings as SettingsIcon, ChevronRight, Palette, Bell, Lock,
+    Key, Webhook, Copy, Check, Trash2, Send, Activity, RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
-import { settingsService } from '@/services/settingsService';
+import {
+    settingsService,
+    ApiKeyItem,
+    WebhookSubscriptionItem,
+    WebhookDeliveryLogItem
+} from '@/services/settingsService';
 import MfaModal from '@/components/auth/MfaModal';
 
 interface TenantData {
@@ -22,6 +28,33 @@ interface TenantData {
     config_json?: Record<string, any>;
 }
 
+const DEFAULT_SCOPES = [
+    'read:invoices',
+    'write:invoices',
+    'read:payments',
+    'write:payments',
+    'read:clients',
+    'read:matters',
+    'read:time_entries',
+];
+
+const DEFAULT_WEBHOOK_EVENTS = [
+    'matter.created',
+    'matter.status_changed',
+    'matter.stage_changed',
+    'matter.closed',
+    'invoice.created',
+    'invoice.paid',
+    'invoice.overdue',
+    'document.uploaded',
+    'document.approved',
+    'deadline.approaching',
+    'deadline.expired',
+    'client.created',
+    'payment.received',
+    'conflict.detected',
+];
+
 export default function SettingsPage() {
     const [activeSection, setActiveSection] = useState('despacho');
     const [tenantData, setTenantData] = useState<TenantData | null>(null);
@@ -35,6 +68,32 @@ export default function SettingsPage() {
     const [showPasswords, setShowPasswords] = useState({ current: false, new_password: false, confirm: false });
     const [showMfaModal, setShowMfaModal] = useState(false);
 
+    // Sprint 6: Public API Keys & Webhooks state
+    const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
+    const [webhooks, setWebhooks] = useState<WebhookSubscriptionItem[]>([]);
+    const [loadingIntegrations, setLoadingIntegrations] = useState(false);
+    const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
+    const [copiedText, setCopiedText] = useState<string | null>(null);
+
+    const [showNewKeyForm, setShowNewKeyForm] = useState(false);
+    const [newKeyForm, setNewKeyForm] = useState({
+        nombre: '',
+        plataforma: 'quickbooks',
+        scopes: ['read:invoices', 'write:invoices', 'read:clients', 'read:payments', 'write:payments'],
+        rate_limit_per_minute: 60,
+    });
+
+    const [showNewWebhookForm, setShowNewWebhookForm] = useState(false);
+    const [newWebhookForm, setNewWebhookForm] = useState({
+        nombre: '',
+        url: '',
+        events: ['invoice.created', 'invoice.paid', 'payment.received'],
+    });
+    const [selectedWebhookLogs, setSelectedWebhookLogs] = useState<{
+        webhookId: string;
+        logs: WebhookDeliveryLogItem[];
+    } | null>(null);
+
     const toast = useToast();
 
     useEffect(() => {
@@ -42,6 +101,12 @@ export default function SettingsPage() {
         if (stored) setUser(JSON.parse(stored));
         fetchTenantData();
     }, []);
+
+    useEffect(() => {
+        if (activeSection === 'integraciones') {
+            fetchIntegrationsData();
+        }
+    }, [activeSection]);
 
     const fetchTenantData = async () => {
         try {
@@ -51,6 +116,132 @@ export default function SettingsPage() {
             console.error('Error fetching tenant', e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchIntegrationsData = async () => {
+        setLoadingIntegrations(true);
+        try {
+            const [keysData, hooksData] = await Promise.all([
+                settingsService.listApiKeys(),
+                settingsService.listWebhooks(),
+            ]);
+            setApiKeys(keysData);
+            setWebhooks(hooksData);
+        } catch (e) {
+            console.error('Error loading integrations', e);
+        } finally {
+            setLoadingIntegrations(false);
+        }
+    };
+
+    const copyToClipboard = (text: string, label: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedText(text);
+        toast.success('Copiado', `${label} copiado al portapapeles`);
+        setTimeout(() => setCopiedText(null), 2000);
+    };
+
+    const handleCreateApiKey = async () => {
+        if (!newKeyForm.nombre.trim()) {
+            toast.error('Nombre requerido', 'Ingresa un nombre descriptivo para la API Key.');
+            return;
+        }
+        if (newKeyForm.scopes.length === 0) {
+            toast.error('Permisos requeridos', 'Selecciona al menos un scope.');
+            return;
+        }
+        setSaving(true);
+        try {
+            const created = await settingsService.createApiKey(newKeyForm);
+            setNewlyCreatedKey(created.raw_key || null);
+            setApiKeys(prev => [created, ...prev]);
+            setShowNewKeyForm(false);
+            setNewKeyForm({
+                nombre: '',
+                plataforma: 'quickbooks',
+                scopes: ['read:invoices', 'write:invoices', 'read:clients', 'read:payments', 'write:payments'],
+                rate_limit_per_minute: 60,
+            });
+            toast.success('API Key generada', 'Copia tu clave secreta ahora; no se volverá a mostrar.');
+        } catch (e: any) {
+            toast.error('Error', e?.response?.data?.detail || 'No se pudo crear la API Key.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRevokeApiKey = async (keyId: string) => {
+        try {
+            await settingsService.revokeApiKey(keyId);
+            setApiKeys(prev => prev.map(k => k.id === keyId ? { ...k, activo: false } : k));
+            toast.success('API Key revocada', 'El acceso externo con esta clave ha sido desactivado.');
+        } catch (e) {
+            toast.error('Error', 'No se pudo revocar la API Key.');
+        }
+    };
+
+    const handleCreateWebhook = async () => {
+        if (!newWebhookForm.nombre.trim() || !newWebhookForm.url.trim()) {
+            toast.error('Campos incompletos', 'Ingresa un nombre y URL de destino válida.');
+            return;
+        }
+        if (newWebhookForm.events.length === 0) {
+            toast.error('Eventos requeridos', 'Selecciona al menos un evento para suscribir.');
+            return;
+        }
+        setSaving(true);
+        try {
+            const created = await settingsService.createWebhook(newWebhookForm);
+            setWebhooks(prev => [created, ...prev]);
+            setShowNewWebhookForm(false);
+            setNewWebhookForm({
+                nombre: '',
+                url: '',
+                events: ['invoice.created', 'invoice.paid', 'payment.received'],
+            });
+            toast.success('Webhook registrado', 'El endpoint recibirá eventos firmados con HMAC-SHA256.');
+        } catch (e: any) {
+            toast.error('Error', e?.response?.data?.detail || 'No se pudo registrar el webhook.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleTestWebhook = async (webhookId: string) => {
+        try {
+            const log = await settingsService.testWebhook(webhookId);
+            if (log.success) {
+                toast.success('Ping exitoso', `Respuesta HTTP ${log.response_status} recibida.`);
+            } else {
+                toast.info('Ping enviado', `Intento registrado (Estado HTTP: ${log.response_status || 'Sin conexión'}).`);
+            }
+            const logs = await settingsService.getWebhookLogs(webhookId);
+            setSelectedWebhookLogs({ webhookId, logs });
+        } catch (e) {
+            toast.error('Error', 'No se pudo enviar el evento de prueba.');
+        }
+    };
+
+    const handleViewWebhookLogs = async (webhookId: string) => {
+        try {
+            const logs = await settingsService.getWebhookLogs(webhookId);
+            setSelectedWebhookLogs({ webhookId, logs });
+        } catch (e) {
+            toast.error('Error', 'No se pudieron cargar los logs de entrega.');
+        }
+    };
+
+    const handleDeleteWebhook = async (webhookId: string) => {
+        try {
+            await settingsService.deleteWebhook(webhookId);
+            setWebhooks(prev => prev.filter(w => w.id !== webhookId));
+            if (selectedWebhookLogs?.webhookId === webhookId) {
+                setSelectedWebhookLogs(null);
+            }
+            toast.success('Webhook eliminado');
+        } catch (e) {
+            toast.error('Error', 'No se pudo eliminar el webhook.');
         }
     };
 
@@ -83,7 +274,6 @@ export default function SettingsPage() {
             localStorage.setItem('user', JSON.stringify(user));
             toast.success('Perfil actualizado', 'Sus datos de perfil se guardaron correctamente.');
         } catch (e: any) {
-            // If API call fails, still save to localStorage as fallback
             localStorage.setItem('user', JSON.stringify(user));
             toast.success('Perfil actualizado localmente', 'Los cambios se guardaron en su sesión.');
         } finally {
@@ -117,7 +307,8 @@ export default function SettingsPage() {
     const sections = [
         { id: 'despacho', label: 'Datos del Despacho', icon: Building2, desc: 'Información general del bufete' },
         { id: 'perfil', label: 'Mi Perfil', icon: Users, desc: 'Datos personales y credenciales' },
-        { id: 'seguridad', label: 'Seguridad', icon: Lock, desc: 'Contraseña y sesiones' },
+        { id: 'seguridad', label: 'Seguridad', icon: Lock, desc: 'Contraseña, 2FA y sesiones' },
+        { id: 'integraciones', label: 'Integraciones y API', icon: Webhook, desc: 'API Keys, ERPs y Webhooks' },
         { id: 'notificaciones', label: 'Notificaciones', icon: Bell, desc: 'Preferencias de alertas' },
         { id: 'apariencia', label: 'Apariencia', icon: Palette, desc: 'Tema y personalización' },
     ];
@@ -136,6 +327,24 @@ export default function SettingsPage() {
         </div>
     );
 
+    const toggleScope = (scope: string) => {
+        setNewKeyForm(prev => ({
+            ...prev,
+            scopes: prev.scopes.includes(scope)
+                ? prev.scopes.filter(s => s !== scope)
+                : [...prev.scopes, scope],
+        }));
+    };
+
+    const toggleWebhookEvent = (ev: string) => {
+        setNewWebhookForm(prev => ({
+            ...prev,
+            events: prev.events.includes(ev)
+                ? prev.events.filter(e => e !== ev)
+                : [...prev.events, ev],
+        }));
+    };
+
     return (
         <div className="animate-fade-in space-y-6">
             {/* Header */}
@@ -145,7 +354,7 @@ export default function SettingsPage() {
                     Configuración
                 </h1>
                 <p className="text-surface-500 text-sm mt-1">
-                    Administra la configuración de tu despacho, perfil y preferencias
+                    Administra la configuración de tu despacho, perfil, seguridad e integraciones contables
                 </p>
             </div>
 
@@ -408,6 +617,409 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sprint 6: Integraciones & API Pública Section */}
+                    {activeSection === 'integraciones' && (
+                        <div className="space-y-6">
+                            {/* ERP Connectors Banner */}
+                            <div className="card p-6">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-100 pb-4 mb-4">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-surface-900 flex items-center gap-2">
+                                            <Key className="w-5 h-5 text-primary-500" />
+                                            API Pública (`/api/v1/public/*`) & Conectores Contables
+                                        </h2>
+                                        <p className="text-sm text-surface-500">
+                                            Sincroniza facturas, retenciones DGI/ALMA, pagos, clientes y tiempos con sistemas ERP externos
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={fetchIntegrationsData}
+                                        className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1.5 self-start"
+                                    >
+                                        <RefreshCw className={`w-3.5 h-3.5 ${loadingIntegrations ? 'animate-spin' : ''}`} />
+                                        Actualizar
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                                    {[
+                                        { id: 'quickbooks', name: 'QuickBooks Online', desc: 'Facturas, Pagos y Clientes' },
+                                        { id: 'xero', name: 'Xero Accounting', desc: 'Sincronización Contable' },
+                                        { id: 'alegra', name: 'Alegra LATAM', desc: 'Facturación DGI / ALMA' },
+                                        { id: 'sap', name: 'SAP Business One', desc: 'ERP Bidireccional' },
+                                    ].map(erp => (
+                                        <div key={erp.id} className="p-3.5 rounded-xl border border-surface-200 bg-surface-50/60">
+                                            <p className="text-xs font-bold text-surface-800">{erp.name}</p>
+                                            <p className="text-[11px] text-surface-500 mt-0.5">{erp.desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Newly Created Key Alert */}
+                                {newlyCreatedKey && (
+                                    <div className="mb-6 p-4 rounded-xl border-2 border-amber-300 bg-amber-50 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm font-bold text-amber-900">
+                                                🔐 Guarda tu nueva API Key ahora (solo se muestra una vez)
+                                            </p>
+                                            <button
+                                                onClick={() => setNewlyCreatedKey(null)}
+                                                className="text-amber-700 hover:text-amber-900"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-amber-200 font-mono text-xs text-surface-800 break-all">
+                                            <span className="flex-1">{newlyCreatedKey}</span>
+                                            <button
+                                                onClick={() => copyToClipboard(newlyCreatedKey, 'API Key')}
+                                                className="btn-primary py-1 px-2.5 text-xs flex items-center gap-1"
+                                            >
+                                                {copiedText === newlyCreatedKey ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                                Copiar
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-amber-700">
+                                            Envía esta clave en el header HTTP <code className="font-mono bg-amber-100 px-1 rounded">X-API-Key</code>.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* API Keys Header & Form */}
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-bold text-surface-800">Claves de API Activas</h3>
+                                    {!showNewKeyForm && (
+                                        <button
+                                            onClick={() => setShowNewKeyForm(true)}
+                                            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Generar API Key
+                                        </button>
+                                    )}
+                                </div>
+
+                                {showNewKeyForm && (
+                                    <div className="mb-6 p-5 rounded-xl border border-primary-200 bg-primary-50/30 space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <InputField
+                                                label="Nombre de la Integración"
+                                                value={newKeyForm.nombre}
+                                                onChange={(v: string) => setNewKeyForm(prev => ({ ...prev, nombre: v }))}
+                                                placeholder="Ej: Conector Alegra Contabilidad"
+                                            />
+                                            <div>
+                                                <label className="block text-sm font-medium text-surface-700 mb-1.5">Plataforma ERP</label>
+                                                <select
+                                                    value={newKeyForm.plataforma}
+                                                    onChange={(e) => setNewKeyForm(prev => ({ ...prev, plataforma: e.target.value }))}
+                                                    className="w-full px-3.5 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-surface-800"
+                                                >
+                                                    <option value="quickbooks">QuickBooks Online</option>
+                                                    <option value="xero">Xero</option>
+                                                    <option value="alegra">Alegra LATAM</option>
+                                                    <option value="sap">SAP Business One</option>
+                                                    <option value="custom">Personalizado / Otro</option>
+                                                </select>
+                                            </div>
+                                            <InputField
+                                                label="Rate Limit (req / min)"
+                                                type="number"
+                                                value={newKeyForm.rate_limit_per_minute}
+                                                onChange={(v: string) => setNewKeyForm(prev => ({ ...prev, rate_limit_per_minute: Number(v) || 60 }))}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-surface-700 mb-2">
+                                                Alcances de Permisos (Scopes)
+                                            </label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {DEFAULT_SCOPES.map(scope => {
+                                                    const active = newKeyForm.scopes.includes(scope);
+                                                    return (
+                                                        <button
+                                                            key={scope}
+                                                            type="button"
+                                                            onClick={() => toggleScope(scope)}
+                                                            className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all ${
+                                                                active
+                                                                    ? 'bg-primary-600 text-white border-primary-600'
+                                                                    : 'bg-white text-surface-600 border-surface-300 hover:border-primary-400'
+                                                            }`}
+                                                        >
+                                                            {scope}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-2 pt-2">
+                                            <button
+                                                onClick={() => setShowNewKeyForm(false)}
+                                                className="px-4 py-2 text-xs text-surface-600 hover:text-surface-800"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                onClick={handleCreateApiKey}
+                                                disabled={saving}
+                                                className="btn-primary text-xs py-2 px-4"
+                                            >
+                                                {saving ? 'Generando...' : 'Crear API Key'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* API Keys List */}
+                                <div className="space-y-3">
+                                    {apiKeys.length === 0 ? (
+                                        <p className="text-sm text-surface-400 py-6 text-center border border-dashed border-surface-200 rounded-xl">
+                                            No hay claves de API generadas todavía.
+                                        </p>
+                                    ) : (
+                                        apiKeys.map(k => (
+                                            <div
+                                                key={k.id}
+                                                className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-xl border border-surface-200 bg-white"
+                                            >
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-sm text-surface-900">{k.nombre}</span>
+                                                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-surface-100 text-surface-700">
+                                                            {k.plataforma}
+                                                        </span>
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                            k.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                        }`}>
+                                                            {k.activo ? 'Activa' : 'Revocada'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs font-mono text-surface-500">
+                                                        Prefijo: <span className="text-surface-700">{k.key_prefix}...</span> · Límite: {k.rate_limit_per_minute}/min
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-1 pt-1">
+                                                        {(k.scopes || []).map(sc => (
+                                                            <span key={sc} className="px-2 py-0.5 rounded bg-surface-100 text-surface-600 font-mono text-[10px]">
+                                                                {sc}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                {k.activo && (
+                                                    <button
+                                                        onClick={() => handleRevokeApiKey(k.id)}
+                                                        className="btn-outline border-red-200 text-red-600 hover:bg-red-50 text-xs py-1.5 px-3 flex items-center gap-1.5 self-start md:self-center"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        Revocar
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Webhooks Card */}
+                            <div className="card p-6 space-y-5">
+                                <div className="flex items-center justify-between border-b border-surface-100 pb-4">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-surface-900 flex items-center gap-2">
+                                            <Webhook className="w-5 h-5 text-primary-500" />
+                                            Suscripciones de Webhooks (Tiempo Real)
+                                        </h2>
+                                        <p className="text-sm text-surface-500">
+                                            Notificaciones HTTP POST firmadas con <code className="font-mono text-xs">X-LexIntellectus-Signature</code> (HMAC-SHA256)
+                                        </p>
+                                    </div>
+                                    {!showNewWebhookForm && (
+                                        <button
+                                            onClick={() => setShowNewWebhookForm(true)}
+                                            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Nuevo Webhook
+                                        </button>
+                                    )}
+                                </div>
+
+                                {showNewWebhookForm && (
+                                    <div className="p-5 rounded-xl border border-primary-200 bg-primary-50/30 space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <InputField
+                                                label="Nombre del Endpoint"
+                                                value={newWebhookForm.nombre}
+                                                onChange={(v: string) => setNewWebhookForm(prev => ({ ...prev, nombre: v }))}
+                                                placeholder="Ej: Listener Contable QuickBooks"
+                                            />
+                                            <InputField
+                                                label="URL de Destino (HTTPS)"
+                                                value={newWebhookForm.url}
+                                                onChange={(v: string) => setNewWebhookForm(prev => ({ ...prev, url: v }))}
+                                                placeholder="https://erp.midominio.com/webhooks/lexintellectus"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-surface-700 mb-2">
+                                                Eventos Suscritos (14 eventos disponibles)
+                                            </label>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {DEFAULT_WEBHOOK_EVENTS.map(ev => {
+                                                    const active = newWebhookForm.events.includes(ev);
+                                                    return (
+                                                        <button
+                                                            key={ev}
+                                                            type="button"
+                                                            onClick={() => toggleWebhookEvent(ev)}
+                                                            className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+                                                                active
+                                                                    ? 'bg-primary-600 text-white border-primary-600'
+                                                                    : 'bg-white text-surface-600 border-surface-300 hover:border-primary-400'
+                                                            }`}
+                                                        >
+                                                            {ev}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-2 pt-2">
+                                            <button
+                                                onClick={() => setShowNewWebhookForm(false)}
+                                                className="px-4 py-2 text-xs text-surface-600 hover:text-surface-800"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                onClick={handleCreateWebhook}
+                                                disabled={saving}
+                                                className="btn-primary text-xs py-2 px-4"
+                                            >
+                                                {saving ? 'Guardando...' : 'Registrar Webhook'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    {webhooks.length === 0 ? (
+                                        <p className="text-sm text-surface-400 py-6 text-center border border-dashed border-surface-200 rounded-xl">
+                                            No hay endpoints de webhook registrados.
+                                        </p>
+                                    ) : (
+                                        webhooks.map(wh => (
+                                            <div key={wh.id} className="p-4 rounded-xl border border-surface-200 bg-white space-y-3">
+                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-semibold text-sm text-surface-900">{wh.nombre}</span>
+                                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                                wh.activo ? 'bg-green-100 text-green-700' : 'bg-surface-200 text-surface-600'
+                                                            }`}>
+                                                                {wh.activo ? 'Activo' : 'Pausado'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs font-mono text-primary-600 break-all mt-0.5">{wh.url}</p>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleTestWebhook(wh.id)}
+                                                            className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1"
+                                                        >
+                                                            <Send className="w-3.5 h-3.5" />
+                                                            Probar Ping
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleViewWebhookLogs(wh.id)}
+                                                            className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1"
+                                                        >
+                                                            <Activity className="w-3.5 h-3.5" />
+                                                            Logs
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteWebhook(wh.id)}
+                                                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                                                            title="Eliminar Webhook"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded-lg text-xs">
+                                                    <span className="font-mono text-surface-600 truncate">
+                                                        Secret HMAC: <strong>{wh.secret}</strong>
+                                                    </span>
+                                                    <button
+                                                        onClick={() => copyToClipboard(wh.secret, 'Signing Secret')}
+                                                        className="text-primary-600 hover:underline flex items-center gap-1 ml-2 flex-shrink-0"
+                                                    >
+                                                        <Copy className="w-3.5 h-3.5" />
+                                                        Copiar Secret
+                                                    </button>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(wh.events || []).map(ev => (
+                                                        <span key={ev} className="px-2 py-0.5 rounded bg-primary-50 text-primary-700 font-mono text-[10px]">
+                                                            {ev}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Delivery Logs Viewer */}
+                                {selectedWebhookLogs && (
+                                    <div className="mt-4 p-4 rounded-xl border border-surface-200 bg-surface-50 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-surface-700">
+                                                Historial de Entregas Recientes
+                                            </h4>
+                                            <button
+                                                onClick={() => setSelectedWebhookLogs(null)}
+                                                className="text-xs text-surface-500 hover:text-surface-800"
+                                            >
+                                                Cerrar
+                                            </button>
+                                        </div>
+                                        {selectedWebhookLogs.logs.length === 0 ? (
+                                            <p className="text-xs text-surface-500">Sin entregas registradas.</p>
+                                        ) : (
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                {selectedWebhookLogs.logs.map(log => (
+                                                    <div key={log.id} className="p-2.5 rounded-lg bg-white border border-surface-200 flex items-center justify-between text-xs">
+                                                        <div>
+                                                            <span className="font-mono font-semibold text-surface-800">{log.event_type}</span>
+                                                            <span className="text-surface-400 ml-2">
+                                                                Intentos: {log.attempt_count}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`px-2 py-0.5 rounded font-mono text-[10px] ${
+                                                                log.success ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'
+                                                            }`}>
+                                                                HTTP {log.response_status ?? 0}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

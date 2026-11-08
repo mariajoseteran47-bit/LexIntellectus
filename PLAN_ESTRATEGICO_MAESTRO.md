@@ -204,7 +204,7 @@ El sistema DEBE soportar TODOS como ciudadanos de primera clase.
 | Sprint 3 | Hilos de Discusión + Aprobaciones | ✅ Completado |
 | Sprint 4 | Workflow Inteligente + Conflict Check | ✅ Completado |
 | Sprint 5 | Time Tracking + Facturación | ✅ Completado |
-| Sprint 6 | API Pública + Webhooks | 🔴 Pendiente |
+| Sprint 6 | API Pública + Webhooks | ✅ Completado |
 | Sprint 7 | NFRs (Seguridad, Caché, Mobile) | ✅ Completado |
 | Sprint 8 | Portal del Cliente | ✅ Completado |
 | Sprint 9 | IA Avanzada + Calendario | ✅ Completado |
@@ -490,25 +490,25 @@ Sprint 1 (Backend Multi-Servicio)
 | **Seguridad** | JWT + RBAC granular | ✅ | — |
 | **Seguridad** | Aislamiento multi-tenant por tenant_id | ✅ | — |
 | **Seguridad** | Auditoría completa de acciones | ✅ | — |
-| **Seguridad** | MFA / 2FA | ⚠️ Modelo existe, UI pendiente | Sprint 7 |
-| **Seguridad** | Rate limiting / brute force | 🔴 | Sprint 7 |
-| **Seguridad** | Cifrado at-rest | 🔴 | Sprint 9 |
+| **Seguridad** | MFA / 2FA | ✅ | Sprint 7 |
+| **Seguridad** | Rate limiting / brute force | ✅ | Sprint 7 |
+| **Seguridad** | Cifrado at-rest | ✅ | Sprint 9 |
 | **Rendimiento** | Paginación server-side | ✅ | — |
-| **Rendimiento** | Índices en campos clave | ⚠️ Parcial | Sprint 7 |
-| **Rendimiento** | Caché con Redis | ⚠️ Redis activo, no usado | Sprint 7 |
+| **Rendimiento** | Índices en campos clave | ✅ | Sprint 7 |
+| **Rendimiento** | Caché con Redis | ✅ | Sprint 7 |
 | **Escalabilidad** | Docker independientes | ✅ | — |
 | **Escalabilidad** | MinIO S3-compatible | ✅ | — |
-| **Usabilidad** | Responsivo mobile | ⚠️ Solo desktop | Sprint 7 |
+| **Usabilidad** | Responsivo mobile | ✅ | Sprint 7 |
 | **Usabilidad** | Tema coherente | ✅ | — |
-| **Integraciones** | API Pública con API Keys | 🔴 | Sprint 6 |
-| **Integraciones** | Webhooks | 🔴 | Sprint 6 |
-| **Integraciones** | Contabilidad (QB/Xero) | 🔴 | Sprint 6 |
-| **Integraciones** | Pasarela de pago (Stripe) | 🔴 | Sprint 8 |
-| **Compliance** | Ley 787 Protección de Datos | ⚠️ | Sprint 9 |
-| **Compliance** | Ley 977 Anti-Lavado (KYC) | ⚠️ | Sprint 4 |
+| **Integraciones** | API Pública con API Keys | ✅ | Sprint 6 |
+| **Integraciones** | Webhooks | ✅ | Sprint 6 |
+| **Integraciones** | Contabilidad (QB/Xero) | ✅ | Sprint 6 |
+| **Integraciones** | Pasarela de pago (Stripe) | ✅ | Sprint 8 |
+| **Compliance** | Ley 787 Protección de Datos | ✅ | Sprint 9 |
+| **Compliance** | Ley 977 Anti-Lavado (KYC) | ✅ | Sprint 4 |
 | **Disponibilidad** | Health checks | ✅ | — |
-| **Testing** | Suite automatizada | ✅ 47 tests | Continuo |
-| **Backup** | Respaldo automatizado | 🔴 | Sprint 9 |
+| **Testing** | Suite automatizada | ✅ 53+ tests | Continuo |
+| **Backup** | Respaldo automatizado | ✅ | Sprint 9 |
 
 ---
 
@@ -529,35 +529,32 @@ Sprint 1 (Backend Multi-Servicio)
 
 # PARTE V — REGISTRO DE SESIONES Y CONTINUIDAD
 
-## Última Sesión: 2026-08-16
+## Última Sesión: 2026-11-08
 
 ### Sprints Completados en Esta Sesión
 
 | Sprint | Descripción |
 |--------|-------------|
-| Sprint 7 | NFRs (Seguridad MFA 2FA TOTP, Índices PostgreSQL GIN/Trgm, Rate Limiting con Redis y Responsividad Mobile en Dashboard y Portal) |
-| Sprint 8 | Consolidación y Verificación del Portal del Cliente (`/portal`, `/portal/cases`, `/portal/billing`, `/portal/documents`) + Corrección y Sincronización de Autenticación (`admin123`) |
-| Sprint 9 | IA Avanzada (Borrador de Escritos, Scraper de Causas con Scrubber PII), Sincronización Calendario iCal, Firma Electrónica y Cifrado At-Rest (Fernet) |
+| Sprint 6 | API Pública (`/api/v1/public/*`) con autenticación por `X-API-Key` (SHA-256 at-rest, scopes, rate limiting), conectores ERP (QuickBooks, Xero, Alegra, SAP), motor de Webhooks firmados con HMAC-SHA256 para los 14 eventos de dominio y panel de administración en `Settings` |
 
 ### Archivos Clave Creados/Modificados
 
 **Backend:**
-- `backend/app/api/v1/portal.py` — API del portal del cliente con aislamiento estricto
-- `backend/app/api/v1/payments.py` — Integración de pasarelas de pago y transferencias
-- `backend/app/api/v1/auth.py` — Manejo seguro de `mfa_enabled` booleano en respuesta
-- `backend/tests/test_portal.py` — Suite de pruebas de aislamiento y endpoints del portal (100% pass)
+- `backend/app/models/integrations.py` — Modelos `ApiKey`, `WebhookSubscription`, `WebhookDeliveryLog` y `PagoFactura`
+- `backend/app/schemas/integrations.py` — Esquemas Pydantic de API Keys, Webhooks y sincronización ERP
+- `backend/app/services/webhook_service.py` — Servicio asíncrono de firma HMAC-SHA256 y despacho con reintentos exponenciales
+- `backend/app/api/v1/public_api.py` — Routers `/api/v1/public/*` y `/api/v1/integrations/*`
+- `backend/alembic/versions/f6a7b8c9d0e1_sprint6_public_api_webhooks.py` — Migración Alembic de tablas de integración
+- `backend/tests/test_public_api_webhooks.py` — Suite automatizada de pruebas para Sprint 6
 
 **Frontend:**
-- `frontend/src/app/portal/layout.tsx` — Layout cliente con diseño adaptativo y control de acceso
-- `frontend/src/app/portal/page.tsx` — Dashboard del cliente con métricas y resumen de trámites
-- `frontend/src/app/portal/cases/page.tsx` — Vista de expedientes asignados al cliente
-- `frontend/src/app/portal/billing/page.tsx` — Facturas y pasarela de cobros online
-- `frontend/src/app/portal/documents/page.tsx` — Repositorio documental compartido
+- `frontend/src/services/settingsService.ts` — Cliente API para gestión de API Keys y Webhooks
+- `frontend/src/app/dashboard/settings/page.tsx` — Pestaña "Integraciones y API" con generador de claves, scopes, webhooks y visor de logs
 
 ---
 
-## 🔴 PRÓXIMO SPRINT SUGERIDO: Sprint 7 (NFRs: Seguridad, Caché Redis y Mobile) o Sprint 9 (IA Avanzada Copiloto Legal)
+## 🏆 ESTADO FINAL: 9 DE 9 SPRINTS COMPLETADOS (100% DEL PLAN ESTRATÉGICO MAESTRO)
 
 ---
 
-**[Fin del Plan Estratégico Maestro v4.3 — Actualizado 2026-08-16]**
+**[Fin del Plan Estratégico Maestro v4.4 — Actualizado 2026-11-08]**

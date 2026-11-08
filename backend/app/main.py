@@ -11,7 +11,7 @@ from fastapi_limiter import FastAPILimiter
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent, audit, case_timeline, reports, client_profiles, professional_profiles, evidences, client_documents, workflows, collaboration, workflow_engine, billing, portal, payments
+from app.api.v1 import health, auth, users, tenants, cases, deadlines, documents, notifications, dashboard, ai_agent, audit, case_timeline, reports, client_profiles, professional_profiles, evidences, client_documents, workflows, collaboration, workflow_engine, billing, portal, payments, public_api
 from app.middleware.tenant import TenantMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
 from app.core.error_handlers import register_exception_handlers
@@ -123,6 +123,8 @@ app.include_router(workflow_engine.router, prefix=api_prefix, tags=["Workflow En
 app.include_router(billing.router, prefix=api_prefix, tags=["Billing & Monetization"])
 app.include_router(portal.router, prefix=api_prefix)
 app.include_router(payments.router, prefix=api_prefix)
+app.include_router(public_api.public_router, prefix=api_prefix)
+app.include_router(public_api.integrations_router, prefix=api_prefix)
 app.include_router(health.router, prefix=api_prefix)
 
 

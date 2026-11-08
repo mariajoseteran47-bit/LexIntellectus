@@ -26,6 +26,47 @@ export interface ProfileUpdateDto {
     apellido?: string;
 }
 
+export interface ApiKeyItem {
+    id: string;
+    tenant_id: string;
+    nombre: string;
+    plataforma: string;
+    key_prefix: string;
+    scopes: string[];
+    rate_limit_per_minute: number;
+    activo: boolean;
+    last_used_at?: string;
+    expires_at?: string;
+    created_at?: string;
+    raw_key?: string;
+}
+
+export interface WebhookSubscriptionItem {
+    id: string;
+    tenant_id: string;
+    nombre: string;
+    url: string;
+    events: string[];
+    secret: string;
+    activo: boolean;
+    failure_count: number;
+    last_triggered_at?: string;
+    created_at?: string;
+}
+
+export interface WebhookDeliveryLogItem {
+    id: string;
+    subscription_id: string;
+    event_type: string;
+    payload: Record<string, any>;
+    signature?: string;
+    response_status?: number;
+    response_body?: string;
+    attempt_count: number;
+    success: boolean;
+    delivered_at?: string;
+}
+
 export const settingsService = {
     // ── Tenant Management ──────────────────────────
 
@@ -42,7 +83,6 @@ export const settingsService = {
     // ── User Profile ───────────────────────────────
 
     async updateProfile(updates: ProfileUpdateDto): Promise<any> {
-        // Try to get user ID from localStorage
         const stored = localStorage.getItem('user');
         if (!stored) throw new Error('No user session');
         const user = JSON.parse(stored);
@@ -73,6 +113,69 @@ export const settingsService = {
 
     async disableMfa(code: string): Promise<{ message: string }> {
         const { data } = await api.post('/auth/mfa/disable', { code });
+        return data;
+    },
+
+    // ── Public API Keys & Webhooks (Sprint 6) ──────
+
+    async getIntegrationsCatalog(): Promise<{
+        scopes: string[];
+        webhook_events: string[];
+        platforms: { id: string; name: string; category: string }[];
+    }> {
+        const { data } = await api.get('/integrations/catalog');
+        return data;
+    },
+
+    async listApiKeys(): Promise<ApiKeyItem[]> {
+        const { data } = await api.get<ApiKeyItem[]>('/integrations/api-keys');
+        return data;
+    },
+
+    async createApiKey(payload: {
+        nombre: string;
+        plataforma: string;
+        scopes: string[];
+        rate_limit_per_minute?: number;
+    }): Promise<ApiKeyItem> {
+        const { data } = await api.post<ApiKeyItem>('/integrations/api-keys', payload);
+        return data;
+    },
+
+    async revokeApiKey(keyId: string): Promise<void> {
+        await api.delete(`/integrations/api-keys/${keyId}`);
+    },
+
+    async listWebhooks(): Promise<WebhookSubscriptionItem[]> {
+        const { data } = await api.get<WebhookSubscriptionItem[]>('/integrations/webhooks');
+        return data;
+    },
+
+    async createWebhook(payload: {
+        nombre: string;
+        url: string;
+        events: string[];
+    }): Promise<WebhookSubscriptionItem> {
+        const { data } = await api.post<WebhookSubscriptionItem>('/integrations/webhooks', payload);
+        return data;
+    },
+
+    async toggleWebhook(webhookId: string, activo: boolean): Promise<WebhookSubscriptionItem> {
+        const { data } = await api.patch<WebhookSubscriptionItem>(`/integrations/webhooks/${webhookId}`, { activo });
+        return data;
+    },
+
+    async deleteWebhook(webhookId: string): Promise<void> {
+        await api.delete(`/integrations/webhooks/${webhookId}`);
+    },
+
+    async testWebhook(webhookId: string): Promise<WebhookDeliveryLogItem> {
+        const { data } = await api.post<WebhookDeliveryLogItem>(`/integrations/webhooks/${webhookId}/test`);
+        return data;
+    },
+
+    async getWebhookLogs(webhookId: string): Promise<WebhookDeliveryLogItem[]> {
+        const { data } = await api.get<WebhookDeliveryLogItem[]>(`/integrations/webhooks/${webhookId}/logs`);
         return data;
     },
 };
