@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 import asyncio
 from typing import AsyncGenerator
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -19,7 +19,7 @@ url_parts = str(settings.database_url).rsplit("/", 1)
 TEST_DATABASE_URL = f"{url_parts[0]}/lexintellectus_test"
 
 engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=False, bind=engine, class_=AsyncSession)
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -59,6 +59,7 @@ async def client(db_session) -> AsyncGenerator[AsyncClient, None]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    async with AsyncClient(app=app, base_url="http://test") as c:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()

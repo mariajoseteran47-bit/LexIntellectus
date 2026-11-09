@@ -14,7 +14,19 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="es">
+        <html lang="es" suppressHydrationWarning>
+            <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            try {
+                                var savedTheme = localStorage.getItem('lex_theme') || 'clasico';
+                                document.documentElement.setAttribute('data-theme', savedTheme);
+                            } catch (e) {}
+                        `,
+                    }}
+                />
+            </head>
             <body className="min-h-screen">
                 <ToastProvider>
                     {children}

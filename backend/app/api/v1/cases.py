@@ -580,17 +580,36 @@ async def change_case_stage(
         "message": f"Etapa procesal cambiada a '{stage_name}'"
     }
 
-from fastapi import Response
+from fastapi import Request, Response
 from app.models.case import PlazoFatal
 from app.services.calendar_service import CalendarService
+from app.core.security import decode_token
 
 @router.get("/{id}/ical.ics")
 async def get_case_ical(
     id: UUID,
+    request: Request,
+    token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(require_permission("cases.read"))
 ):
     """Export all deadlines for a specific case in RFC 5545 iCalendar format."""
+    auth_header = request.headers.get("Authorization", "")
+    raw_token = token
+    if not raw_token and auth_header.startswith("Bearer "):
+        raw_token = auth_header.split(" ", 1)[1].strip()
+
+    if not raw_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
+
+    payload = decode_token(raw_token)
+    if not payload or not payload.get("sub") or payload.get("type") != "access":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+
+    user_res = await db.execute(select(Usuario).where(Usuario.id == payload.get("sub")))
+    current_user = user_res.scalar_one_or_none()
+    if not current_user or current_user.status != "activo":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autorizado")
+
     case = await db.get(Expediente, id)
     if not case or case.tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
@@ -598,6 +617,7 @@ async def get_case_ical(
     # Fetch all deadlines for this case
     deadlines_query = (
         select(PlazoFatal)
+        .options(selectinload(PlazoFatal.expediente))
         .where(
             PlazoFatal.expediente_id == id,
             PlazoFatal.status == "pendiente"

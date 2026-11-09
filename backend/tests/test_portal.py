@@ -330,3 +330,136 @@ async def test_client_portal_and_payments(client: AsyncClient, db_session: Async
     result = await db_session.execute(select(Factura).where(Factura.id == invoice_published_id))
     inv = result.scalar_one()
     assert inv.estado == "pagada"
+
+    # =========================================================================
+    # TEST 7: Portal Dashboard, Threads, Approvals, Profile & Bank Transfer
+    # =========================================================================
+    # 7.1 Dashboard summary
+    dash_resp = await client.get("/api/v1/portal/dashboard", headers=headers_client)
+    assert dash_resp.status_code == 200
+    assert dash_resp.json()["active_cases"] == 1
+
+    # 7.2 Create & message in client thread
+    thread_resp = await client.post(
+        "/api/v1/portal/threads",
+        json={
+            "expediente_id": str(case_owned_id),
+            "titulo": "Consulta sobre audiencia",
+            "mensaje_inicial": "Estimado abogado, ¿a qué hora es la audiencia?"
+        },
+        headers=headers_client,
+    )
+    assert thread_resp.status_code == 201
+    thread_id = thread_resp.json()["id"]
+
+    msg_resp = await client.post(
+        f"/api/v1/portal/threads/{thread_id}/messages",
+        json={"contenido": "Adjunto comprobante adicional."},
+        headers=headers_client,
+    )
+    assert msg_resp.status_code == 201
+
+    list_msgs = await client.get(f"/api/v1/portal/threads/{thread_id}/messages", headers=headers_client)
+    assert list_msgs.status_code == 200
+    assert len(list_msgs.json()["messages"]) == 2
+
+    # 7.3 Approvals decision from portal
+    from app.models.collaboration import AprobacionDocumento
+    approval_id = uuid.uuid4()
+    ap = AprobacionDocumento(
+        id=approval_id,
+        tenant_id=tenant_id,
+        documento_id=doc_shared_id,
+        expediente_id=case_owned_id,
+        solicitante_id=lawyer_id,
+        aprobador_id=client_user_id,
+        estado="pendiente",
+        motivo_solicitud="Aprobar borrador de contrato",
+    )
+    db_session.add(ap)
+    await db_session.commit()
+
+    app_list = await client.get("/api/v1/portal/approvals", headers=headers_client)
+    assert app_list.status_code == 200
+    assert app_list.json()["total"] == 1
+
+    app_dec = await client.post(
+        f"/api/v1/portal/approvals/{approval_id}/decision",
+        json={"estado": "aprobado", "comentarios": "Conforme con el borrador"},
+        headers=headers_client,
+    )
+    assert app_dec.status_code == 200
+    assert app_dec.json()["estado"] == "aprobado"
+
+    # 7.4 Client Profile GET & PATCH
+    prof_get = await client.get("/api/v1/portal/profile", headers=headers_client)
+    assert prof_get.status_code == 200
+
+    prof_patch = await client.patch(
+        "/api/v1/portal/profile",
+        json={"telefono": "+505 8888-9999", "ciudad": "León"},
+        headers=headers_client,
+    )
+    assert prof_patch.status_code == 200
+    assert prof_patch.json()["ciudad"] == "León"
+
+    # 7.5 iCal with ?token= query param (without Authorization header)
+    ical_q = await client.get(f"/api/v1/portal/calendar/ical.ics?token={client_token}")
+    assert ical_q.status_code == 200
+    assert "BEGIN:VCALENDAR" in ical_q.text
+
+    # 7.6 Bank Transfer Payment Reporting
+    inv_transfer_id = uuid.uuid4()
+    inv_transfer = Factura(
+        id=inv_transfer_id,
+        tenant_id=tenant_id,
+        client_id=client_user_id,
+        case_id=case_owned_id,
+        numero_factura="FAC-TRANSFER-01",
+        estado="enviada",
+        fecha_emision=date.today(),
+        fecha_vencimiento=date.today(),
+        subtotal=Decimal("500.00"),
+        total_factura=Decimal("575.00"),
+        neto_a_pagar=Decimal("575.00"),
+        moneda="NIO",
+    )
+    db_session.add(inv_transfer)
+    await db_session.commit()
+
+    bt_resp = await client.post(
+        "/api/v1/payments/bank-transfer",
+        json={
+            "invoice_id": str(inv_transfer_id),
+            "banco_origen": "BAC Credomatic",
+            "numero_referencia": "TF-2026-998877",
+            "monto": 575.00,
+        },
+        headers=headers_client,
+    )
+    assert bt_resp.status_code == 200
+    assert bt_resp.json()["invoice_status"] == "pagada"
+
+    # =========================================================================
+    # TEST 8: Nicaragua Procedural Calculator (CPCN Art. 129-135)
+    # =========================================================================
+    calc_resp = await client.post(
+        "/api/v1/deadlines/calculate",
+        json={
+            "fecha_inicio": "2026-07-30",
+            "cantidad_dias": 5,
+            "dias_tipo": "habiles",
+            "municipio": "managua",
+            "incluir_vacaciones_judiciales": True,
+        },
+        headers=headers_lawyer,
+    )
+    assert calc_resp.status_code == 200
+    calc_data = calc_resp.json()
+    assert calc_data["cantidad_dias"] == 5
+    # Should skip Aug 1 (Santo Domingo + Saturday) and weekend
+    assert any("Santo Domingo" in ex["motivo"] or "Sábado" in ex["motivo"] for ex in calc_data["dias_excluidos"])
+
+    hol_resp = await client.get("/api/v1/deadlines/holidays?year=2026&municipio=managua", headers=headers_lawyer)
+    assert hol_resp.status_code == 200
+    assert hol_resp.json()["total"] > 10

@@ -555,3 +555,48 @@ async def export_invoices(
         
     await db.commit()
     return export_data
+
+
+@router.get("/invoices/export/csv")
+async def export_invoices_csv(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_any_permission("reports.read"))
+):
+    """Exporta todas las facturas del despacho en formato CSV estándar para software contable."""
+    import io
+    import csv
+    from fastapi.responses import Response
+
+    tenant_id = request.state.tenant_id
+    res = await db.execute(select(Factura).where(Factura.tenant_id == tenant_id))
+    invoices = res.scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "numero_factura", "estado", "fecha_emision", "fecha_vencimiento",
+        "moneda", "subtotal", "iva_monto", "retencion_ir", "retencion_alma",
+        "intereses_mora", "neto_a_pagar"
+    ])
+    for inv in invoices:
+        inv = await calculate_and_update_moratory_interests(inv, db)
+        writer.writerow([
+            inv.numero_factura,
+            inv.estado,
+            str(inv.fecha_emision),
+            str(inv.fecha_vencimiento),
+            inv.moneda,
+            f"{float(inv.subtotal or 0):.2f}",
+            f"{float(inv.iva_monto or 0):.2f}",
+            f"{float(inv.retencion_ir_monto or 0):.2f}",
+            f"{float(inv.retencion_alma_monto or 0):.2f}",
+            f"{float(inv.monto_interes_moratorio or 0):.2f}",
+            f"{float(inv.neto_a_pagar or 0):.2f}",
+        ])
+    await db.commit()
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=facturas_contabilidad.csv"},
+    )

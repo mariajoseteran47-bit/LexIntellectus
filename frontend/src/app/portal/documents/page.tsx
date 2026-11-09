@@ -25,6 +25,8 @@ export default function PortalDocuments() {
     const [signingDoc, setSigningDoc] = useState<DocumentInfo | null>(null);
     const [isSubmittingSignature, setIsSubmittingSignature] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    const [approvals, setApprovals] = useState<any[]>([]);
+    const [decidingId, setDecidingId] = useState<string | null>(null);
 
     // Canvas references for drawing
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -51,6 +53,17 @@ export default function PortalDocuments() {
             if (!res.ok) throw new Error('Error al cargar documentos');
             const data = await res.json();
             setDocuments(data.items || []);
+
+            const appRes = await fetch('/api/v1/portal/approvals', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-Tenant-ID': user.tenant_id
+                }
+            });
+            if (appRes.ok) {
+                const appData = await appRes.json();
+                setApprovals(appData.items || []);
+            }
         } catch (err: any) {
             setError(err.message || 'Error de conexión');
         } finally {
@@ -108,6 +121,36 @@ export default function PortalDocuments() {
         navigator.clipboard.writeText(url);
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 3000);
+    };
+
+    const handleApprovalDecision = async (approvalId: string, estado: 'aprobado' | 'rechazado') => {
+        const token = localStorage.getItem('access_token');
+        const userStr = localStorage.getItem('user');
+        if (!token || !userStr) return;
+        const user = JSON.parse(userStr);
+        setDecidingId(approvalId);
+        try {
+            const res = await fetch(`/api/v1/portal/approvals/${approvalId}/decision`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'X-Tenant-ID': user.tenant_id
+                },
+                body: JSON.stringify({
+                    approval_id: approvalId,
+                    estado,
+                    comentarios: estado === 'aprobado' ? 'Aprobado por el cliente desde el Portal' : 'Observado / Rechazado por el cliente'
+                })
+            });
+            if (res.ok) {
+                await fetchDocuments();
+            }
+        } catch (err) {
+            console.error('Error deciding approval:', err);
+        } finally {
+            setDecidingId(null);
+        }
     };
 
     // Canvas drawing logic
@@ -269,6 +312,57 @@ export default function PortalDocuments() {
                     )}
                 </div>
             </div>
+
+            {/* Approvals Inbox (if any) */}
+            {approvals.length > 0 && (
+                <div className="bg-slate-900/50 border border-amber-500/30 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">
+                            📋 Bandeja de Aprobación de Documentos ({approvals.filter(a => a.estado === 'pendiente').length} pendientes)
+                        </h3>
+                    </div>
+                    <div className="divide-y divide-slate-800/80">
+                        {approvals.map((ap) => (
+                            <div key={ap.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-bold text-white">{ap.nombre_archivo}</p>
+                                    <p className="text-xs text-slate-400">
+                                        Solicitado por {ap.solicitante_nombre} • {ap.motivo_solicitud || 'Revisión de borrador'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {ap.estado === 'pendiente' ? (
+                                        <>
+                                            <button
+                                                onClick={() => handleApprovalDecision(ap.id, 'aprobado')}
+                                                disabled={decidingId === ap.id}
+                                                className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold"
+                                            >
+                                                ✓ Aprobar
+                                            </button>
+                                            <button
+                                                onClick={() => handleApprovalDecision(ap.id, 'rechazado')}
+                                                disabled={decidingId === ap.id}
+                                                className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold"
+                                            >
+                                                ✕ Rechazar
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase ${
+                                            ap.estado === 'aprobado'
+                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                        }`}>
+                                            {ap.estado}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Filters Bar */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-900/40 p-4 border border-slate-800/80 rounded-2xl">

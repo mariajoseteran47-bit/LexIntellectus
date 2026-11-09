@@ -38,6 +38,11 @@ export default function PortalBilling() {
     const [payingProvider, setPayingProvider] = useState<string | null>(null);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'cancel' | 'error'>('idle');
     const [paymentMessage, setPaymentMessage] = useState('');
+    const [showTransferForm, setShowTransferForm] = useState(false);
+    const [bancoOrigen, setBancoOrigen] = useState('BAC Credomatic');
+    const [numeroReferencia, setNumeroReferencia] = useState('');
+    const [notasTransferencia, setNotasTransferencia] = useState('');
+    const [submittingTransfer, setSubmittingTransfer] = useState(false);
 
     const fetchInvoices = async () => {
         const token = localStorage.getItem('access_token');
@@ -180,8 +185,57 @@ export default function PortalBilling() {
         setPaymentStatus('idle');
         setSelectedInvoice(null);
         setPayingProvider(null);
+        setShowTransferForm(false);
+        setNumeroReferencia('');
+        setNotasTransferencia('');
         // Clear query parameters from URL elegantly without reloading
         router.replace('/portal/billing');
+    };
+
+    const handleReportBankTransfer = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedInvoice || !numeroReferencia.trim()) return;
+        setSubmittingTransfer(true);
+        const token = localStorage.getItem('access_token');
+        const userStr = localStorage.getItem('user');
+        if (!token || !userStr) return;
+        const user = JSON.parse(userStr);
+
+        try {
+            const res = await fetch('/api/v1/payments/bank-transfer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'X-Tenant-ID': user.tenant_id
+                },
+                body: JSON.stringify({
+                    invoice_id: selectedInvoice.id,
+                    banco_origen: bancoOrigen,
+                    numero_referencia: numeroReferencia.trim(),
+                    monto: Number(selectedInvoice.neto_a_pagar),
+                    notas: notasTransferencia || undefined
+                })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.detail || 'Error al registrar transferencia bancaria');
+            }
+
+            setSelectedInvoice(null);
+            setShowTransferForm(false);
+            setNumeroReferencia('');
+            setNotasTransferencia('');
+            setPaymentStatus('success');
+            setPaymentMessage('¡Su transferencia bancaria ha sido registrada y aplicada exitosamente a su estado de cuenta!');
+            await fetchInvoices();
+        } catch (err: any) {
+            setPaymentStatus('error');
+            setPaymentMessage(err.message || 'Error al reportar transferencia bancaria');
+        } finally {
+            setSubmittingTransfer(false);
+        }
     };
 
     // Calculate Statements
@@ -339,25 +393,91 @@ export default function PortalBilling() {
                         </div>
 
                         {/* Gateways Buttons */}
-                        <div className="space-y-3 pt-2">
-                            {/* Stripe button */}
-                            <button
-                                onClick={() => handlePayNow(selectedInvoice, 'stripe')}
-                                className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl bg-white hover:bg-slate-100 text-slate-950 font-bold transition-all duration-200 shadow-xl border border-slate-200"
-                            >
-                                <span className="text-indigo-600 font-extrabold text-lg">stripe</span>
-                                <span>Pagar con Tarjeta</span>
-                            </button>
+                        {!showTransferForm ? (
+                            <div className="space-y-3 pt-2">
+                                {/* Stripe button */}
+                                <button
+                                    onClick={() => handlePayNow(selectedInvoice, 'stripe')}
+                                    className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl bg-white hover:bg-slate-100 text-slate-950 font-bold transition-all duration-200 shadow-xl border border-slate-200"
+                                >
+                                    <span className="text-indigo-600 font-extrabold text-lg">stripe</span>
+                                    <span>Pagar con Tarjeta</span>
+                                </button>
 
-                            {/* PayPal button */}
-                            <button
-                                onClick={() => handlePayNow(selectedInvoice, 'paypal')}
-                                className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-blue-900 font-bold transition-all duration-200 shadow-xl"
-                            >
-                                <span className="italic font-extrabold text-lg text-blue-800">Pay<span className="text-blue-500">Pal</span></span>
-                                <span>Pagar con PayPal</span>
-                            </button>
-                        </div>
+                                {/* PayPal button */}
+                                <button
+                                    onClick={() => handlePayNow(selectedInvoice, 'paypal')}
+                                    className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-blue-900 font-bold transition-all duration-200 shadow-xl"
+                                >
+                                    <span className="italic font-extrabold text-lg text-blue-800">Pay<span className="text-blue-500">Pal</span></span>
+                                    <span>Pagar con PayPal</span>
+                                </button>
+
+                                {/* Bank Transfer button */}
+                                <button
+                                    onClick={() => setShowTransferForm(true)}
+                                    className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-bold transition-all duration-200"
+                                >
+                                    <span>🏦</span>
+                                    <span>Reportar Transferencia Bancaria</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleReportBankTransfer} className="space-y-4 pt-2">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Banco Emisor</label>
+                                    <select
+                                        value={bancoOrigen}
+                                        onChange={(e) => setBancoOrigen(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white"
+                                    >
+                                        <option value="BAC Credomatic">BAC Credomatic Nicaragua</option>
+                                        <option value="Banpro">Banpro Grupo Promerica</option>
+                                        <option value="Banco Lafise Bancentro">Banco Lafise Bancentro</option>
+                                        <option value="Banco Ficohsa">Banco Ficohsa</option>
+                                        <option value="Banco Avanz">Banco Avanz</option>
+                                        <option value="Transferencia Internacional SWIFT">Transferencia Internacional SWIFT</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Número de Referencia / Comprobante *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Ej. TF-99887766"
+                                        value={numeroReferencia}
+                                        onChange={(e) => setNumeroReferencia(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Observaciones (Opcional)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Depositante o detalle adicional..."
+                                        value={notasTransferencia}
+                                        onChange={(e) => setNotasTransferencia(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white"
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTransferForm(false)}
+                                        className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700"
+                                    >
+                                        Atrás
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={submittingTransfer || !numeroReferencia.trim()}
+                                        className="flex-1 py-2.5 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400 disabled:opacity-50"
+                                    >
+                                        {submittingTransfer ? 'Registrando...' : 'Confirmar Transferencia'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}

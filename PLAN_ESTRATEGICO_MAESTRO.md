@@ -531,11 +531,14 @@ Sprint 1 (Backend Multi-Servicio)
 
 ## Última Sesión: 2026-11-08
 
-### Sprints Completados en Esta Sesión
+### Sprints y Cierre de Brechas Completados en Esta Sesión
 
-| Sprint | Descripción |
+| Módulo / Sprint | Descripción |
 |--------|-------------|
 | Sprint 6 | API Pública (`/api/v1/public/*`) con autenticación por `X-API-Key` (SHA-256 at-rest, scopes, rate limiting), conectores ERP (QuickBooks, Xero, Alegra, SAP), motor de Webhooks firmados con HMAC-SHA256 para los 14 eventos de dominio y panel de administración en `Settings` |
+| Motor Procesal CPCN (Sprint 7/9) | `NicaraguaProceduralCalculator` en `deadline_service.py` y endpoints `/api/v1/deadlines/calculate`, `/api/v1/deadlines/holidays`, `/api/v1/deadlines/ical.ics` + UI interactiva de Calculadora CPCN en `/dashboard/agenda` y Celery Beat |
+| Pasarelas de Pago y Conciliación (Sprint 5/8) | Registro automático de asientos en `PagoFactura` y disparo de webhooks `payment.received` + `invoice.paid` en Stripe, PayPal y Transferencia Bancaria (`/api/v1/payments/bank-transfer`), más exportación CSV/JSON contable |
+| Portal del Cliente Completo (Sprint 8/9) | Endpoints `/portal/dashboard`, `/portal/threads`, `/portal/approvals`, `/portal/profile`, soporte `?token=` en `/portal/calendar/ical.ics`, y vistas `/portal/messages`, `/portal/profile` y Bandeja de Aprobaciones en `/portal/documents` |
 
 ### Archivos Clave Creados/Modificados
 

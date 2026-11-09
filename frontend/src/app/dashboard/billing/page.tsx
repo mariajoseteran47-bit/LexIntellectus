@@ -54,23 +54,34 @@ export default function BillingOverviewPage() {
         }
     };
 
-    const handleExport = async () => {
+    const handleExport = async (format: 'json' | 'csv' = 'json') => {
         setExporting(true);
         try {
-            const { data } = await api.get('/billing/invoices/export/json');
+            if (format === 'csv') {
+                const { data } = await api.get('/billing/invoices/export/csv', { responseType: 'blob' });
+                const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `facturas_lexintellectus_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                const { data } = await api.get('/billing/invoices/export/json');
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `facturas_lexintellectus_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
             
-            // Create a blob and trigger download
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `facturas_lexintellectus_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            toast.success('Exportación exitosa');
+            toast.success(`Exportación ${format.toUpperCase()} exitosa`);
         } catch (e) {
             console.error(e);
             toast.error('Error al exportar datos');
@@ -115,7 +126,15 @@ export default function BillingOverviewPage() {
                 </div>
                 <div className="flex gap-2">
                     <button 
-                        onClick={handleExport} 
+                        onClick={() => handleExport('csv')} 
+                        disabled={exporting}
+                        className="btn btn-outline flex items-center gap-2 bg-white"
+                    >
+                        <Download className="w-4 h-4" /> 
+                        {exporting ? 'Exportando...' : 'Exportar CSV'}
+                    </button>
+                    <button 
+                        onClick={() => handleExport('json')} 
                         disabled={exporting}
                         className="btn btn-outline flex items-center gap-2 bg-white"
                     >

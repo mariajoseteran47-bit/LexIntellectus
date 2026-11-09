@@ -13,7 +13,7 @@ celery_app = Celery(
     "lex_worker",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["app.services.email_service"]
+    include=["app.services.email_service", "app.services.deadline_service"]
 )
 
 celery_app.conf.update(
