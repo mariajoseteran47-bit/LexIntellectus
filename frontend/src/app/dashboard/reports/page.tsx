@@ -4,15 +4,18 @@ import { useState, useEffect } from 'react';
 import {
     BarChart3, Download, Calendar, Briefcase, Clock,
     TrendingUp, FileText, Users, ArrowUpRight, ArrowDownRight,
-    AlertTriangle, Scale, User
+    AlertTriangle, Scale, User, QrCode, ShieldCheck, ExternalLink, Printer
 } from 'lucide-react';
 import { reportService, ReportOverview } from '@/services/reportService';
+import api from '@/lib/api';
 
 export default function ReportsPage() {
     const [report, setReport] = useState<ReportOverview | null>(null);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState('month');
     const [error, setError] = useState<string | null>(null);
+    const [qrData, setQrData] = useState<any | null>(null);
+    const [generatingQr, setGeneratingQr] = useState(false);
 
     useEffect(() => {
         fetchReport();
@@ -29,6 +32,18 @@ export default function ReportsPage() {
             setError('No se pudieron cargar los reportes. Verifica la conexión.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGenerateReportQR = async () => {
+        setGeneratingQr(true);
+        try {
+            const { data } = await api.get('/qr/report', { params: { period } });
+            setQrData(data);
+        } catch (e) {
+            console.error('Error generating QR certificate:', e);
+        } finally {
+            setGeneratingQr(false);
         }
     };
 
@@ -104,7 +119,15 @@ export default function ReportsPage() {
                         </span>
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={handleGenerateReportQR}
+                        disabled={generatingQr}
+                        className="px-3.5 py-2 text-xs font-bold rounded-lg bg-primary-600 hover:bg-primary-700 text-white flex items-center gap-1.5 shadow-sm transition-colors"
+                    >
+                        <QrCode className="w-4 h-4" />
+                        {generatingQr ? 'Firmando QR...' : 'Certificar Reporte con Sello QR'}
+                    </button>
                     {/* Period Toggle */}
                     <div className="flex items-center bg-surface-100 rounded-lg p-0.5">
                         {[
@@ -126,6 +149,51 @@ export default function ReportsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Sello QR Criptográfico de Validación del Reporte */}
+            {qrData && (
+                <div className="card p-6 border-2 border-emerald-200 bg-emerald-50/40 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex flex-col sm:flex-row items-center gap-5">
+                        <div className="bg-white p-3 rounded-2xl border border-emerald-200 shadow-md shrink-0">
+                            <img
+                                src={qrData.qr_svg_data_uri}
+                                alt="Código QR de Validación de Reporte"
+                                className="w-28 h-28"
+                            />
+                        </div>
+                        <div className="space-y-1.5 text-center sm:text-left">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                                <ShieldCheck className="w-3.5 h-3.5" /> Reporte Certificado con Firma HMAC-SHA256
+                            </div>
+                            <h3 className="text-lg font-extrabold text-surface-900">
+                                Sello Oficial: <span className="font-mono text-primary-700">{qrData.verification_code}</span>
+                            </h3>
+                            <p className="text-xs text-surface-600">
+                                Emitido por <strong>{qrData.issued_by}</strong> ({qrData.despacho}) el {qrData.issued_at}
+                            </p>
+                            <p className="text-[11px] font-mono text-surface-500 break-all max-w-xl">
+                                SHA-256: {qrData.sha256_hash}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                        <a
+                            href={`/verify?token=${encodeURIComponent(qrData.token)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                            Validar en Portal Público <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                        <button
+                            onClick={() => window.print()}
+                            className="px-4 py-2 rounded-lg bg-white border border-surface-200 hover:bg-surface-50 text-surface-700 text-xs font-semibold flex items-center justify-center gap-1.5"
+                        >
+                            <Printer className="w-3.5 h-3.5" /> Imprimir Reporte Sellado
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, Receipt, AlertTriangle, Send, CheckCircle, Trash2, Download } from 'lucide-react';
+import { DollarSign, Receipt, AlertTriangle, Send, CheckCircle, Trash2, Download, QrCode, X } from 'lucide-react';
 import api from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -36,6 +36,17 @@ export default function BillingOverviewPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
+    const [invoiceQr, setInvoiceQr] = useState<any | null>(null);
+
+    const handleShowInvoiceQr = async (invoiceId: string) => {
+        try {
+            const { data } = await api.get(`/qr/invoice/${invoiceId}`);
+            setInvoiceQr(data);
+        } catch (e) {
+            console.error(e);
+            toast.error('No se pudo generar el código QR de la factura');
+        }
+    };
 
     useEffect(() => {
         loadInvoices();
@@ -193,6 +204,7 @@ export default function BillingOverviewPage() {
                                     <th className="px-6 py-4 font-semibold text-surface-600 text-right">Impuestos/Ret.</th>
                                     <th className="px-6 py-4 font-semibold text-surface-600 text-right">Mora</th>
                                     <th className="px-6 py-4 font-semibold text-surface-600 text-right">Neto a Pagar</th>
+                                    <th className="px-6 py-4 font-semibold text-surface-600 text-center">Sello QR</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-surface-100">
@@ -233,6 +245,15 @@ export default function BillingOverviewPage() {
                                             <td className="px-6 py-4 text-right font-bold text-surface-900 text-base">
                                                 {inv.moneda} {inv.neto_a_pagar.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button
+                                                    onClick={() => handleShowInvoiceQr(inv.id)}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 text-xs font-bold transition-colors"
+                                                    title="Generar Sello QR Fiscal y de Cobro"
+                                                >
+                                                    <QrCode className="w-3.5 h-3.5" /> QR
+                                                </button>
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -241,6 +262,39 @@ export default function BillingOverviewPage() {
                     </div>
                 )}
             </div>
+
+            {/* Modal Sello QR de Factura */}
+            {invoiceQr && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-surface-200 max-w-sm w-full p-6 text-center space-y-4">
+                        <div className="flex items-center justify-between border-b border-surface-100 pb-3">
+                            <span className="text-sm font-bold text-surface-900">
+                                Sello QR Fiscal — {invoiceQr.numero_factura}
+                            </span>
+                            <button onClick={() => setInvoiceQr(null)} className="text-surface-400 hover:text-surface-700">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-surface-200 inline-block mx-auto shadow-xs">
+                            <img src={invoiceQr.qr_svg_data_uri} alt="QR Factura" className="w-44 h-44 mx-auto" />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-xs font-mono font-bold text-primary-700">{invoiceQr.verification_code}</p>
+                            <p className="text-[11px] text-surface-500">
+                                Escanee este código QR con la cámara de su móvil para validar el estado fiscal o pagar en línea.
+                            </p>
+                        </div>
+                        <a
+                            href={`/verify?token=${encodeURIComponent(invoiceQr.token)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold"
+                        >
+                            Abrir Certificado Público de Validación
+                        </a>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

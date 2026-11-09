@@ -463,3 +463,30 @@ async def test_client_portal_and_payments(client: AsyncClient, db_session: Async
     hol_resp = await client.get("/api/v1/deadlines/holidays?year=2026&municipio=managua", headers=headers_lawyer)
     assert hol_resp.status_code == 200
     assert hol_resp.json()["total"] > 10
+
+    # =========================================================================
+    # TEST 9: Cryptographic QR Certification & Public Verification
+    # =========================================================================
+    qr_rep = await client.get("/api/v1/qr/report?period=month", headers=headers_lawyer)
+    assert qr_rep.status_code == 200
+    rep_data = qr_rep.json()
+    assert rep_data["verification_code"].startswith("LEX-")
+    assert rep_data["qr_svg_data_uri"].startswith("data:image/svg+xml;base64,")
+
+    # Public verification of the report QR token (no auth required)
+    ver_rep = await client.get(f"/api/v1/qr/verify?token={rep_data['token']}")
+    assert ver_rep.status_code == 200
+    assert ver_rep.json()["valid"] is True
+    assert ver_rep.json()["entity_type"] == "report"
+
+    # Invoice QR & Public verification
+    qr_inv = await client.get(f"/api/v1/qr/invoice/{inv_transfer_id}", headers=headers_client)
+    assert qr_inv.status_code == 200
+    inv_qr_data = qr_inv.json()
+    ver_inv = await client.get(f"/api/v1/qr/verify?token={inv_qr_data['token']}")
+    assert ver_inv.status_code == 200
+    assert ver_inv.json()["live_status"]["estado_actual"] == "pagada"
+
+    # Tampered token must be rejected
+    bad_ver = await client.get(f"/api/v1/qr/verify?token={inv_qr_data['token']}tampered")
+    assert bad_ver.status_code == 400
